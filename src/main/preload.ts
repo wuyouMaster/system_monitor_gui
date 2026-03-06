@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 export interface MemoryInfo {
   total: number;
   available: number;
@@ -51,24 +55,44 @@ export interface SocketConnection {
   inode: number;
 }
 
-export interface SystemSummary {
+// Push-event payloads from main process
+export interface FastData {
   memory: MemoryInfo;
   cpu: CpuInfo;
   cpuUsage: number[];
+}
+
+export interface SlowData {
   disks: DiskInfo[];
   socketSummary: SocketSummary;
-  processes: ProcessInfo[];
-  processCount: number;
   connections: SocketConnection[];
 }
 
+export interface ProcessData {
+  processes: ProcessInfo[];
+  processCount: number;
+}
+
+// ---------------------------------------------------------------------------
+// Exposed API
+// ---------------------------------------------------------------------------
+
 contextBridge.exposeInMainWorld('systemInfo', {
-  getSystemSummary: () => ipcRenderer.invoke('get-system-summary'),
-  getMemoryInfo: () => ipcRenderer.invoke('get-memory-info'),
-  getCpuInfo: () => ipcRenderer.invoke('get-cpu-info'),
-  getCpuUsage: (duration?: number) => ipcRenderer.invoke('get-cpu-usage', duration),
-  getDisks: () => ipcRenderer.invoke('get-disks'),
-  getSocketSummary: () => ipcRenderer.invoke('get-socket-summary'),
-  getProcesses: () => ipcRenderer.invoke('get-processes'),
-  getConnections: () => ipcRenderer.invoke('get-connections'),
+  // Push subscriptions — main process sends these on a timer.
+  // Each returns an unsubscribe function for cleanup.
+  onFastData:      (cb: (d: FastData)    => void) => {
+    const handler = (_: unknown, d: FastData)    => cb(d);
+    ipcRenderer.on('data:fast',      handler);
+    return () => ipcRenderer.removeListener('data:fast',      handler);
+  },
+  onSlowData:      (cb: (d: SlowData)    => void) => {
+    const handler = (_: unknown, d: SlowData)    => cb(d);
+    ipcRenderer.on('data:slow',      handler);
+    return () => ipcRenderer.removeListener('data:slow',      handler);
+  },
+  onProcessData:   (cb: (d: ProcessData) => void) => {
+    const handler = (_: unknown, d: ProcessData) => cb(d);
+    ipcRenderer.on('data:processes', handler);
+    return () => ipcRenderer.removeListener('data:processes', handler);
+  },
 });

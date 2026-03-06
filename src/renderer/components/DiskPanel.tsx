@@ -49,7 +49,8 @@ export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks }) => {
           </Typography>
         </Box>
 
-        <TableContainer>
+        {/* pointerEvents none: read-only table, eliminates hit-test on rows/cells */}
+        <TableContainer sx={{ pointerEvents: 'none' }}>
           <Table size="small">
             <TableHead>
               <TableRow>

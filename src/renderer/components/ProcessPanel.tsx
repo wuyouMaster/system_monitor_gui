@@ -1,159 +1,238 @@
-import React from 'react';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-} from '@mui/material';
+import React, { useRef, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
 import { ViewList as ProcessIcon } from '@mui/icons-material';
 
+interface Process {
+  pid: number;
+  name: string;
+  command: string;
+  status: string;
+  memoryUsage: number;
+}
+
 interface ProcessPanelProps {
-  processes: {
-    pid: number;
-    name: string;
-    command: string;
-    status: string;
-    memoryUsage: number;
-  }[];
+  processes: Process[];
   processCount: number;
 }
 
-export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(({ processes, processCount }) => {
-  const formatBytes = (bytes: number) => {
-    const mb = bytes / 1024 / 1024;
-    if (mb >= 1000) return `${(mb / 1024).toFixed(2)} GB`;
-    return `${mb.toFixed(0)} MB`;
-  };
+// Outside component — never re-created, never trigger re-renders
+const formatBytes = (bytes: number): string => {
+  const mb = bytes / 1024 / 1024;
+  if (mb >= 1000) return `${(mb / 1024).toFixed(2)} GB`;
+  return `${mb.toFixed(0)} MB`;
+};
 
-  const getStatusColor = (status: string): string => {
-    switch (status.toLowerCase()) {
-      case 'running':  return '#34C759';
-      case 'sleeping': return '#5AC8FA';
-      case 'stopped':  return '#FF9500';
-      case 'zombie':   return '#FF3B30';
-      default:         return 'rgba(235,235,245,0.4)';
-    }
-  };
+const getStatusColor = (status: string): string => {
+  switch (status.toLowerCase()) {
+    case 'running':  return '#34C759';
+    case 'sleeping': return '#5AC8FA';
+    case 'stopped':  return '#FF9500';
+    case 'zombie':   return '#FF3B30';
+    default:         return 'rgba(235,235,245,0.4)';
+  }
+};
 
-  const sortedProcesses = [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage);
+// Column layout shared between header and rows
+const COL_TEMPLATE = '56px 1fr 84px 72px';
 
-  return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <ProcessIcon sx={{ fontSize: 20, color: '#007AFF' }} />
-            <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
-              Processes
-            </Typography>
-          </Box>
+const ROW_HEIGHT = 44; // px — fixed height enables O(1) scroll position math
+
+// Stable sx objects — defined outside render to avoid object identity churn
+const SCROLL_SX = {
+  flex: 1,
+  overflow: 'auto',
+  // Contain scroll to this element; prevents event bubbling to the dashboard scroll container
+  overscrollBehavior: 'contain',
+  '&::-webkit-scrollbar': { width: 4 },
+  '&::-webkit-scrollbar-track': { background: 'transparent' },
+  '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.15)', borderRadius: 2 },
+} as const;
+
+const HEADER_CELL_SX = {
+  color: 'rgba(235,235,245,0.6)',
+  fontWeight: 500,
+  fontSize: 12,
+  lineHeight: 1,
+} as const;
+
+// Individual row — memoized so it only re-renders when its own process data changes
+const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties }> = React.memo(
+  ({ process, style }) => {
+    const color = getStatusColor(process.status);
+    return (
+      // VSCode pattern: position:absolute + transform:translateY moves the row to the
+      // right visual position entirely on the GPU compositor — zero layout cost during scroll.
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: ROW_HEIGHT,
+          display: 'grid',
+          gridTemplateColumns: COL_TEMPLATE,
+          alignItems: 'center',
+          px: 1,
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          pointerEvents: 'none',
+        }}
+        style={style}
+      >
+        {/* PID */}
+        <Typography
+          variant="body2"
+          sx={{ color: '#5856D6', fontFamily: 'monospace', fontWeight: 500 }}
+        >
+          {process.pid}
+        </Typography>
+
+        {/* Name + command */}
+        <Box sx={{ overflow: 'hidden', pr: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 500, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {process.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: 9, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {process.command.substring(0, 60)}
+          </Typography>
+        </Box>
+
+        {/* Memory */}
+        <Typography
+          variant="body2"
+          sx={{ color: '#34C759', fontWeight: 500, textAlign: 'right' }}
+        >
+          {formatBytes(process.memoryUsage)}
+        </Typography>
+
+        {/* Status chip */}
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <Chip
-            label={`${processCount} total`}
+            label={process.status}
             size="small"
             sx={{
-              background: 'rgba(0,122,255,0.12)',
-              color: '#007AFF',
-              border: '1px solid rgba(0,122,255,0.2)',
+              background: `${color}18`,
+              color,
+              border: `1px solid ${color}35`,
+              fontSize: 10,
+              height: 20,
               fontWeight: 500,
-              fontSize: 11,
             }}
           />
         </Box>
+      </Box>
+    );
+  },
+);
 
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}>
-                  PID
-                </TableCell>
-                <TableCell sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}>
-                  Name
-                </TableCell>
-                <TableCell
-                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
-                  align="right"
-                >
-                  Memory
-                </TableCell>
-                <TableCell
-                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
-                  align="center"
-                >
-                  Status
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedProcesses.slice(0, 15).map((process) => (
-                <TableRow key={process.pid}>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{ color: '#5856D6', fontFamily: 'monospace', fontWeight: 500 }}
-                    >
-                      {process.pid}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {process.name}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        fontSize: 9,
-                        maxWidth: 200,
-                        display: 'block',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {process.command.substring(0, 60)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 500 }}>
-                      {formatBytes(process.memoryUsage)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      label={process.status}
-                      size="small"
-                      sx={{
-                        background: `${getStatusColor(process.status)}18`,
-                        color: getStatusColor(process.status),
-                        border: `1px solid ${getStatusColor(process.status)}35`,
-                        fontSize: 10,
-                        height: 20,
-                        fontWeight: 500,
-                      }}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
+  ({ processes, processCount }) => {
+    const parentRef = useRef<HTMLDivElement>(null);
 
-        {processes.length === 0 && (
-          <Box textAlign="center" py={4}>
-            <Typography variant="body2" color="text.secondary">
-              No process information available
-            </Typography>
+    const sortedProcesses = useMemo(
+      () => [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage),
+      [processes],
+    );
+
+    const rowVirtualizer = useVirtualizer({
+      count: sortedProcesses.length,
+      getScrollElement: () => parentRef.current,
+      // Fixed row height → O(1) scroll math, no measurement needed
+      estimateSize: () => ROW_HEIGHT,
+      // Pre-render 5 rows above/below visible area to hide any rendering latency
+      overscan: 5,
+    });
+
+    return (
+      <Card sx={{ height: '100%' }}>
+        <CardContent
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            p: '20px !important',
+          }}
+        >
+          {/* Panel header */}
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            mb={1.5}
+            sx={{ flexShrink: 0, pointerEvents: 'none' }}
+          >
+            <Box display="flex" alignItems="center" gap={1}>
+              <ProcessIcon sx={{ fontSize: 20, color: '#007AFF' }} />
+              <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
+                Processes
+              </Typography>
+            </Box>
+            <Chip
+              label={`${processCount} total`}
+              size="small"
+              sx={{
+                background: 'rgba(0,122,255,0.12)',
+                color: '#007AFF',
+                border: '1px solid rgba(0,122,255,0.2)',
+                fontWeight: 500,
+                fontSize: 11,
+              }}
+            />
           </Box>
-        )}
-      </CardContent>
-    </Card>
-  );
-});
+
+          {/* Column headers — sticky, no scroll */}
+          <Box
+            display="grid"
+            sx={{
+              gridTemplateColumns: COL_TEMPLATE,
+              px: 1,
+              pb: 0.75,
+              mb: 0.5,
+              flexShrink: 0,
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              pointerEvents: 'none',
+            }}
+          >
+            <Typography sx={HEADER_CELL_SX}>PID</Typography>
+            <Typography sx={HEADER_CELL_SX}>Name</Typography>
+            <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'right' }}>Memory</Typography>
+            <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'center' }}>Status</Typography>
+          </Box>
+
+          {/* Virtual scroll viewport */}
+          <Box ref={parentRef} sx={SCROLL_SX}>
+            {/*
+              Total height spacer: tells the browser the full scroll extent.
+              Items are absolutely positioned inside via transform:translateY —
+              exactly the pattern used by VSCode's editor for zero-layout-cost scrolling.
+            */}
+            <Box sx={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+                <ProcessRow
+                  key={virtualRow.key}
+                  process={sortedProcesses[virtualRow.index]}
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                />
+              ))}
+            </Box>
+          </Box>
+
+          {processes.length === 0 && (
+            <Box textAlign="center" py={4} sx={{ pointerEvents: 'none' }}>
+              <Typography variant="body2" color="text.secondary">
+                No process information available
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    );
+  },
+);

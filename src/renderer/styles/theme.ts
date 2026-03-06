@@ -95,7 +95,8 @@ export const techTheme = {
     MuiTableRow: {
       styleOverrides: {
         root: {
-          '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' },
+          // Hover disabled: prevents hit-test on every pointermove across all table rows
+          pointerEvents: 'none',
         },
       },
     },
@@ -113,10 +114,13 @@ export const techTheme = {
 };
 
 export const globalStyles = {
-  body: {
+  // Lock body/html so the ONLY scrollable surface is the dashboard's own container.
+  // This lets the browser compositor-thread the scroll independently from React renders.
+  'html, body, #root': {
     margin: 0,
     padding: 0,
+    height: '100%',
+    overflow: 'hidden',
     background: '#000000',
-    minHeight: '100vh',
   },
 };

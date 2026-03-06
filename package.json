@@ -14,10 +14,11 @@
     "electron:build": "vite build && electron-builder"
   },
   "dependencies": {
-    "@mui/material": "^5.15.0",
-    "@mui/icons-material": "^5.15.0",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.0",
+    "@mui/material": "^5.15.0",
+    "@tanstack/react-virtual": "^3.13.21",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.0"
@@ -49,7 +50,9 @@
       {
         "from": "../query_system_info/dist",
         "to": "native",
-        "filter": ["**/*.node"]
+        "filter": [
+          "**/*.node"
+        ]
       }
     ]
   }

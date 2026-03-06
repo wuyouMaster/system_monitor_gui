@@ -1,12 +1,21 @@
 "use strict";
 const electron = require("electron");
 electron.contextBridge.exposeInMainWorld("systemInfo", {
-  getSystemSummary: () => electron.ipcRenderer.invoke("get-system-summary"),
-  getMemoryInfo: () => electron.ipcRenderer.invoke("get-memory-info"),
-  getCpuInfo: () => electron.ipcRenderer.invoke("get-cpu-info"),
-  getCpuUsage: (duration) => electron.ipcRenderer.invoke("get-cpu-usage", duration),
-  getDisks: () => electron.ipcRenderer.invoke("get-disks"),
-  getSocketSummary: () => electron.ipcRenderer.invoke("get-socket-summary"),
-  getProcesses: () => electron.ipcRenderer.invoke("get-processes"),
-  getConnections: () => electron.ipcRenderer.invoke("get-connections")
+  // Push subscriptions — main process sends these on a timer.
+  // Each returns an unsubscribe function for cleanup.
+  onFastData: (cb) => {
+    const handler = (_, d) => cb(d);
+    electron.ipcRenderer.on("data:fast", handler);
+    return () => electron.ipcRenderer.removeListener("data:fast", handler);
+  },
+  onSlowData: (cb) => {
+    const handler = (_, d) => cb(d);
+    electron.ipcRenderer.on("data:slow", handler);
+    return () => electron.ipcRenderer.removeListener("data:slow", handler);
+  },
+  onProcessData: (cb) => {
+    const handler = (_, d) => cb(d);
+    electron.ipcRenderer.on("data:processes", handler);
+    return () => electron.ipcRenderer.removeListener("data:processes", handler);
+  }
 });
