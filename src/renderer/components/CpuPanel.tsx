@@ -21,7 +21,7 @@ const STAT_BOX = {
   border: '1px solid rgba(255,255,255,0.07)',
 };
 
-export const CpuPanel: React.FC<CpuPanelProps> = ({ cpu, cpuUsage }) => {
+export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) => {
   const chartData = cpuUsage.map((usage, index) => ({ core: `C${index}`, usage }));
 
   const avgUsage =
@@ -133,4 +133,4 @@ export const CpuPanel: React.FC<CpuPanelProps> = ({ cpu, cpuUsage }) => {
       </CardContent>
     </Card>
   );
-};
+});

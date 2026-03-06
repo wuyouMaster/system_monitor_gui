@@ -46,7 +46,7 @@ const StatBox = ({
   </Box>
 );
 
-export const SocketPanel: React.FC<SocketPanelProps> = ({ socketSummary, connections }) => {
+export const SocketPanel: React.FC<SocketPanelProps> = React.memo(({ socketSummary, connections }) => {
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
@@ -154,4 +154,4 @@ export const SocketPanel: React.FC<SocketPanelProps> = ({ socketSummary, connect
       </CardContent>
     </Card>
   );
-};
+});

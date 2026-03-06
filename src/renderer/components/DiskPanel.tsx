@@ -26,7 +26,7 @@ interface DiskPanelProps {
   }[];
 }
 
-export const DiskPanel: React.FC<DiskPanelProps> = ({ disks }) => {
+export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks }) => {
   const formatBytes = (bytes: number) => {
     const gb = bytes / 1024 / 1024 / 1024;
     if (gb >= 1000) return `${(gb / 1024).toFixed(2)} TB`;
@@ -141,4 +141,4 @@ export const DiskPanel: React.FC<DiskPanelProps> = ({ disks }) => {
       </CardContent>
     </Card>
   );
-};
+});

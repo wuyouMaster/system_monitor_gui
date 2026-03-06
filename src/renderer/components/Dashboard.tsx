@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { MemoryPanel } from './MemoryPanel';
 import { CpuPanel } from './CpuPanel';
@@ -6,28 +6,51 @@ import { DiskPanel } from './DiskPanel';
 import { SocketPanel } from './SocketPanel';
 import { ProcessPanel } from './ProcessPanel';
 
+const REFRESH_MS = 2000;
+
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const summary = await window.systemInfo.getSystemSummary();
-      setData(summary);
-      setError(null);
+      if (mountedRef.current) {
+        startTransition(() => {
+          setData(summary);
+          setError(null);
+        });
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch system info');
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch system info');
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchData();
-    const interval = setInterval(fetchData, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(fetchData, REFRESH_MS);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, [fetchData]);
+
+  // Memoize each panel's data slice so panels only re-render when their own data changes
+  const memory = useMemo(() => data?.memory ?? {}, [data?.memory]);
+  const cpu = useMemo(() => data?.cpu ?? {}, [data?.cpu]);
+  const cpuUsage = useMemo(() => data?.cpuUsage ?? [], [data?.cpuUsage]);
+  const socketSummary = useMemo(() => data?.socketSummary ?? {}, [data?.socketSummary]);
+  const connections = useMemo(() => data?.connections ?? [], [data?.connections]);
+  const disks = useMemo(() => data?.disks ?? [], [data?.disks]);
+  const processes = useMemo(() => data?.processes ?? [], [data?.processes]);
+  const processCount = data?.processCount ?? 0;
 
   if (loading) {
     return (
@@ -70,16 +93,12 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1600, mx: 'auto' }}>
+    <Box sx={{ p: 3, maxWidth: 1600, mx: 'auto', overscrollBehavior: 'contain' }}>
       {/* Header */}
       <Box mb={4} pt={1}>
         <Typography
           variant="h4"
-          sx={{
-            color: '#FFFFFF',
-            fontWeight: 700,
-            letterSpacing: -0.5,
-          }}
+          sx={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: -0.5 }}
         >
           System Monitor
         </Typography>
@@ -90,21 +109,15 @@ export const Dashboard: React.FC = () => {
 
       {/* Top Row: Memory, CPU, Network */}
       <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={2.5} mb={2.5}>
-        <MemoryPanel memory={data?.memory || {}} />
-        <CpuPanel cpu={data?.cpu || {}} cpuUsage={data?.cpuUsage || []} />
-        <SocketPanel
-          socketSummary={data?.socketSummary || {}}
-          connections={data?.connections || []}
-        />
+        <MemoryPanel memory={memory} />
+        <CpuPanel cpu={cpu} cpuUsage={cpuUsage} />
+        <SocketPanel socketSummary={socketSummary} connections={connections} />
       </Box>
 
       {/* Bottom Row: Disk, Processes */}
       <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={2.5}>
-        <DiskPanel disks={data?.disks || []} />
-        <ProcessPanel
-          processes={data?.processes || []}
-          processCount={data?.processCount || 0}
-        />
+        <DiskPanel disks={disks} />
+        <ProcessPanel processes={processes} processCount={processCount} />
       </Box>
 
       {/* Footer */}

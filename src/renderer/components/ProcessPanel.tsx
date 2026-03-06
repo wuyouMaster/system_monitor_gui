@@ -25,7 +25,7 @@ interface ProcessPanelProps {
   processCount: number;
 }
 
-export const ProcessPanel: React.FC<ProcessPanelProps> = ({ processes, processCount }) => {
+export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(({ processes, processCount }) => {
   const formatBytes = (bytes: number) => {
     const mb = bytes / 1024 / 1024;
     if (mb >= 1000) return `${(mb / 1024).toFixed(2)} GB`;
@@ -156,4 +156,4 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = ({ processes, processCo
       </CardContent>
     </Card>
   );
-};
+});

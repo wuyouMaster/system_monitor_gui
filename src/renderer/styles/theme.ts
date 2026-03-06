@@ -49,11 +49,11 @@ export const techTheme = {
     MuiCard: {
       styleOverrides: {
         root: {
-          background: 'rgba(28,28,30,0.92)',
+          background: '#1C1C1E',
           border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 2px 20px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(20px)',
+          boxShadow: '0 1px 8px rgba(0,0,0,0.4)',
           borderRadius: 16,
+          contain: 'content',
         },
       },
     },

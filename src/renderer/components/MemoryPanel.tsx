@@ -19,7 +19,7 @@ const STAT_BOX = {
   border: '1px solid rgba(255,255,255,0.07)',
 };
 
-export const MemoryPanel: React.FC<MemoryInfoProps> = ({ memory }) => {
+export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) => {
   const formatBytes = (bytes: number) => {
     const gb = bytes / 1024 / 1024 / 1024;
     return `${gb.toFixed(2)} GB`;
@@ -108,4 +108,4 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = ({ memory }) => {
       </CardContent>
     </Card>
   );
-};
+});
