@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, Typography, Box, Grid } from '@mui/material';
-import { Dns as NetworkIcon, Router as SocketIcon } from '@mui/icons-material';
+import { Router as SocketIcon } from '@mui/icons-material';
 
 interface SocketPanelProps {
   socketSummary: {
@@ -19,94 +19,128 @@ interface SocketPanelProps {
   }[];
 }
 
-export const SocketPanel: React.FC<SocketPanelProps> = ({ socketSummary, connections }) => {
-  const StatBox = ({ label, value, color, icon }: any) => (
-    <Box 
-      sx={{ 
-        background: `linear-gradient(135deg, ${color}15, ${color}05)`,
-        p: 2, 
-        borderRadius: 2, 
-        border: `1px solid ${color}40`,
-        textAlign: 'center',
-      }}
-    >
-      <Typography variant="h4" sx={{ color, fontWeight: 700, textShadow: `0 0 10px ${color}80` }}>
-        {value}
-      </Typography>
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
-    </Box>
-  );
+const STAT_BOX = {
+  background: 'rgba(255,255,255,0.05)',
+  p: 1.5,
+  borderRadius: 2,
+  border: '1px solid rgba(255,255,255,0.07)',
+  textAlign: 'center' as const,
+};
 
+const StatBox = ({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) => (
+  <Box sx={STAT_BOX}>
+    <Typography variant="h5" sx={{ color, fontWeight: 700, letterSpacing: -0.3 }}>
+      {value}
+    </Typography>
+    <Typography variant="caption" color="text.secondary">
+      {label}
+    </Typography>
+  </Box>
+);
+
+export const SocketPanel: React.FC<SocketPanelProps> = ({ socketSummary, connections }) => {
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Box display="flex" alignItems="center" mb={2}>
-          <SocketIcon sx={{ fontSize: 32, color: '#00f0ff', mr: 1 }} />
-          <Typography variant="h5" sx={{ color: '#00f0ff', textShadow: '0 0 10px rgba(0,240,255,0.5)' }}>
-            NETWORK
+        <Box display="flex" alignItems="center" mb={2.5} gap={1}>
+          <SocketIcon sx={{ fontSize: 20, color: '#007AFF' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
+            Network
           </Typography>
         </Box>
 
-        <Grid container spacing={2} mb={3}>
+        <Grid container spacing={1.5} mb={2.5}>
           <Grid item xs={4}>
-            <StatBox label="Total" value={socketSummary.total} color="#00f0ff" />
+            <StatBox label="Total" value={socketSummary.total} color="#5AC8FA" />
           </Grid>
           <Grid item xs={4}>
-            <StatBox label="Established" value={socketSummary.established} color="#00ff88" />
+            <StatBox label="Established" value={socketSummary.established} color="#34C759" />
           </Grid>
           <Grid item xs={4}>
-            <StatBox label="Listening" value={socketSummary.listen} color="#ff00ff" />
+            <StatBox label="Listening" value={socketSummary.listen} color="#5856D6" />
           </Grid>
           <Grid item xs={6}>
-            <StatBox label="Time Wait" value={socketSummary.timeWait} color="#ffaa00" />
+            <StatBox label="Time Wait" value={socketSummary.timeWait} color="#FF9500" />
           </Grid>
           <Grid item xs={6}>
-            <StatBox label="Close Wait" value={socketSummary.closeWait} color="#ff3366" />
+            <StatBox label="Close Wait" value={socketSummary.closeWait} color="#FF3B30" />
           </Grid>
         </Grid>
 
-        <Typography variant="subtitle2" sx={{ color: '#00f0ff', mb: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, display: 'block', mb: 1 }}
+        >
           Recent Connections
         </Typography>
-        
-        <Box sx={{ 
-          maxHeight: 150, 
-          overflow: 'auto',
-          '&::-webkit-scrollbar': { width: 4 },
-          '&::-webkit-scrollbar-track': { background: 'rgba(0,240,255,0.1)' },
-          '&::-webkit-scrollbar-thumb': { background: '#00f0ff', borderRadius: 2 },
-        }}>
+
+        <Box
+          sx={{
+            maxHeight: 160,
+            overflow: 'auto',
+            '&::-webkit-scrollbar': { width: 4 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(255,255,255,0.15)',
+              borderRadius: 2,
+            },
+          }}
+        >
           {connections.slice(0, 8).map((conn, index) => (
-            <Box 
+            <Box
               key={index}
-              sx={{ 
-                display: 'flex', 
+              sx={{
+                display: 'flex',
                 justifyContent: 'space-between',
-                py: 1,
+                alignItems: 'center',
+                py: 0.75,
                 px: 1.5,
-                borderRadius: 1,
+                borderRadius: 1.5,
                 mb: 0.5,
-                background: 'rgba(0,240,255,0.03)',
-                border: '1px solid rgba(0,240,255,0.1)',
-                '&:hover': {
-                  background: 'rgba(0,240,255,0.08)',
-                },
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.05)',
+                '&:hover': { background: 'rgba(255,255,255,0.06)' },
               }}
             >
               <Box>
-                <Typography variant="caption" sx={{ color: conn.protocol.includes('tcp') ? '#00ff88' : '#ff00ff', fontWeight: 600 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: conn.protocol.toLowerCase().includes('tcp') ? '#34C759' : '#5856D6',
+                    fontWeight: 600,
+                    display: 'block',
+                    lineHeight: 1.3,
+                  }}
+                >
                   {conn.protocol.toUpperCase()}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#8888aa', fontSize: 10 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'rgba(235,235,245,0.45)', fontSize: 10 }}
+                >
                   {conn.localAddr}
                 </Typography>
               </Box>
               <Box textAlign="right">
-                <Typography variant="caption" sx={{ color: '#ffaa00', fontSize: 10 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: '#FF9500', fontSize: 10, display: 'block', lineHeight: 1.3 }}
+                >
                   {conn.state}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#666', fontSize: 9 }}>
-                  PID: {conn.pid}
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'rgba(235,235,245,0.3)', fontSize: 9 }}
+                >
+                  PID {conn.pid}
                 </Typography>
               </Box>
             </Box>

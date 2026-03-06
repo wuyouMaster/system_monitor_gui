@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, Typography, Box, Grid } from '@mui/material';
-import { Memory as CpuIcon } from '@mui/icons-material';
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import { DeveloperBoard as CpuIcon } from '@mui/icons-material';
+import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
 interface CpuPanelProps {
   cpu: {
@@ -14,92 +14,118 @@ interface CpuPanelProps {
   cpuUsage: number[];
 }
 
-export const CpuPanel: React.FC<CpuPanelProps> = ({ cpu, cpuUsage }) => {
-  const chartData = cpuUsage.map((usage, index) => ({
-    core: `C${index}`,
-    usage,
-  }));
+const STAT_BOX = {
+  background: 'rgba(255,255,255,0.05)',
+  p: 1.5,
+  borderRadius: 2,
+  border: '1px solid rgba(255,255,255,0.07)',
+};
 
-  const avgUsage = cpuUsage.length > 0 
-    ? cpuUsage.reduce((a, b) => a + b, 0) / cpuUsage.length 
-    : 0;
+export const CpuPanel: React.FC<CpuPanelProps> = ({ cpu, cpuUsage }) => {
+  const chartData = cpuUsage.map((usage, index) => ({ core: `C${index}`, usage }));
+
+  const avgUsage =
+    cpuUsage.length > 0 ? cpuUsage.reduce((a, b) => a + b, 0) / cpuUsage.length : 0;
 
   const getUsageColor = (percent: number) => {
-    if (percent < 50) return '#00ff88';
-    if (percent < 75) return '#ffaa00';
-    return '#ff3366';
+    if (percent < 60) return '#34C759';
+    if (percent < 80) return '#FF9500';
+    return '#FF3B30';
   };
+
+  const color = getUsageColor(avgUsage);
 
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Box display="flex" alignItems="center" mb={2}>
-          <CpuIcon sx={{ fontSize: 32, color: '#00f0ff', mr: 1 }} />
-          <Typography variant="h5" sx={{ color: '#00f0ff', textShadow: '0 0 10px rgba(0,240,255,0.5)' }}>
+        <Box display="flex" alignItems="center" mb={2.5} gap={1}>
+          <CpuIcon sx={{ fontSize: 20, color: '#007AFF' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
             CPU
           </Typography>
         </Box>
 
-        <Typography variant="body2" color="text.secondary" gutterBottom>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {cpu.modelName}
         </Typography>
-        
-        <Grid container spacing={2} mb={2}>
+
+        <Grid container spacing={1.5} mb={2}>
           <Grid item xs={4}>
-            <Box sx={{ background: 'rgba(0,240,255,0.05)', p: 1.5, borderRadius: 2, border: '1px solid rgba(0,240,255,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Physical</Typography>
-              <Typography variant="h6" sx={{ color: '#00f0ff' }}>{cpu.physicalCores}</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Physical
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.25 }}>
+                {cpu.physicalCores}
+              </Typography>
             </Box>
           </Grid>
           <Grid item xs={4}>
-            <Box sx={{ background: 'rgba(255,0,255,0.05)', p: 1.5, borderRadius: 2, border: '1px solid rgba(255,0,255,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Logical</Typography>
-              <Typography variant="h6" sx={{ color: '#ff00ff' }}>{cpu.logicalCores}</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Logical
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#5856D6', fontWeight: 600, mt: 0.25 }}>
+                {cpu.logicalCores}
+              </Typography>
             </Box>
           </Grid>
           <Grid item xs={4}>
-            <Box sx={{ background: 'rgba(0,255,136,0.05)', p: 1.5, borderRadius: 2, border: '1px solid rgba(0,255,136,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Frequency</Typography>
-              <Typography variant="h6" sx={{ color: '#00ff88' }}>{(cpu.frequencyMhz / 1000).toFixed(2)} GHz</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Freq
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#5AC8FA', fontWeight: 600, mt: 0.25 }}>
+                {(cpu.frequencyMhz / 1000).toFixed(2)} GHz
+              </Typography>
             </Box>
           </Grid>
         </Grid>
 
-        <Box mb={1}>
-          <Box display="flex" justifyContent="space-between" mb={1}>
-            <Typography variant="body2" color="text.secondary">Avg Usage</Typography>
-            <Typography 
-              variant="h5" 
-              sx={{ 
-                color: getUsageColor(avgUsage),
-                textShadow: `0 0 10px ${getUsageColor(avgUsage)}80`,
-              }}
-            >
-              {avgUsage.toFixed(1)}%
-            </Typography>
-          </Box>
+        <Box mb={1.5} display="flex" justifyContent="space-between" alignItems="baseline">
+          <Typography variant="body2" color="text.secondary">
+            Avg Usage
+          </Typography>
+          <Typography variant="h5" sx={{ color, fontWeight: 700, letterSpacing: -0.3 }}>
+            {avgUsage.toFixed(1)}%
+          </Typography>
         </Box>
 
-        <Box sx={{ height: 120 }}>
+        <Box sx={{ height: 110 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <XAxis 
-                dataKey="core" 
-                stroke="#666"
-                tick={{ fill: '#8888aa', fontSize: 10 }}
+              <XAxis
+                dataKey="core"
+                stroke="transparent"
+                tick={{ fill: 'rgba(235,235,245,0.4)', fontSize: 9 }}
+                axisLine={false}
+                tickLine={false}
               />
-              <YAxis 
-                domain={[0, 100]} 
-                stroke="#666"
-                tick={{ fill: '#8888aa', fontSize: 10 }}
+              <YAxis
+                domain={[0, 100]}
+                stroke="transparent"
+                tick={{ fill: 'rgba(235,235,245,0.4)', fontSize: 9 }}
+                axisLine={false}
+                tickLine={false}
+                width={28}
               />
-              <Line 
-                type="monotone" 
-                dataKey="usage" 
-                stroke="#00f0ff"
-                strokeWidth={2}
-                dot={{ fill: '#00f0ff', r: 3 }}
-                activeDot={{ r: 6, fill: '#fff' }}
+              <Tooltip
+                contentStyle={{
+                  background: 'rgba(28,28,30,0.95)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: '#fff',
+                }}
+                cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
+              />
+              <Line
+                type="monotone"
+                dataKey="usage"
+                stroke="#007AFF"
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 4, fill: '#007AFF', stroke: '#fff', strokeWidth: 1.5 }}
               />
             </LineChart>
           </ResponsiveContainer>

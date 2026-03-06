@@ -1,5 +1,17 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, LinearProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  LinearProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from '@mui/material';
 import { Storage as DiskIcon } from '@mui/icons-material';
 
 interface DiskPanelProps {
@@ -17,25 +29,23 @@ interface DiskPanelProps {
 export const DiskPanel: React.FC<DiskPanelProps> = ({ disks }) => {
   const formatBytes = (bytes: number) => {
     const gb = bytes / 1024 / 1024 / 1024;
-    if (gb >= 1000) {
-      return `${(gb / 1024).toFixed(2)} TB`;
-    }
+    if (gb >= 1000) return `${(gb / 1024).toFixed(2)} TB`;
     return `${gb.toFixed(2)} GB`;
   };
 
   const getUsageColor = (percent: number) => {
-    if (percent < 50) return '#00ff88';
-    if (percent < 75) return '#ffaa00';
-    return '#ff3366';
+    if (percent < 60) return '#34C759';
+    if (percent < 80) return '#FF9500';
+    return '#FF3B30';
   };
 
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Box display="flex" alignItems="center" mb={2}>
-          <DiskIcon sx={{ fontSize: 32, color: '#00f0ff', mr: 1 }} />
-          <Typography variant="h5" sx={{ color: '#00f0ff', textShadow: '0 0 10px rgba(0,240,255,0.5)' }}>
-            DISK
+        <Box display="flex" alignItems="center" mb={2.5} gap={1}>
+          <DiskIcon sx={{ fontSize: 20, color: '#007AFF' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
+            Disk
           </Typography>
         </Box>
 
@@ -43,47 +53,72 @@ export const DiskPanel: React.FC<DiskPanelProps> = ({ disks }) => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }}>Mount</TableCell>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }} align="right">Used</TableCell>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }} align="right">Total</TableCell>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }} align="right">Usage</TableCell>
+                <TableCell sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}>
+                  Mount
+                </TableCell>
+                <TableCell
+                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
+                  align="right"
+                >
+                  Used
+                </TableCell>
+                <TableCell
+                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
+                  align="right"
+                >
+                  Total
+                </TableCell>
+                <TableCell
+                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
+                  align="right"
+                >
+                  Usage
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {disks.map((disk, index) => (
-                <TableRow key={index} sx={{ '&:hover': { backgroundColor: 'rgba(0,240,255,0.08)' } }}>
+                <TableRow key={index}>
                   <TableCell>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: '#fff' }}>{disk.mountPoint}</Typography>
-                      <Typography variant="caption" color="text.secondary">{disk.fsType}</Typography>
-                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {disk.mountPoint}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {disk.fsType}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <Typography sx={{ color: '#ffaa00' }}>{formatBytes(disk.usedBytes)}</Typography>
+                    <Typography variant="body2" sx={{ color: '#FF9500', fontWeight: 500 }}>
+                      {formatBytes(disk.usedBytes)}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <Typography sx={{ color: '#8888aa' }}>{formatBytes(disk.totalBytes)}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {formatBytes(disk.totalBytes)}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <Box display="flex" alignItems="center" justifyContent="flex-end">
-                      <Box width={80} mr={1}>
-                        <LinearProgress 
-                          variant="determinate" 
+                    <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                      <Box width={64}>
+                        <LinearProgress
+                          variant="determinate"
                           value={disk.usagePercent}
-                          sx={{ 
-                            height: 6, 
-                            borderRadius: 3,
+                          sx={{
+                            height: 4,
+                            borderRadius: 2,
                             '& .MuiLinearProgress-bar': {
-                              background: `linear-gradient(90deg, ${getUsageColor(disk.usagePercent)}, #00f0ff)`,
+                              background: getUsageColor(disk.usagePercent),
                             },
                           }}
                         />
                       </Box>
-                      <Typography 
-                        sx={{ 
+                      <Typography
+                        variant="body2"
+                        sx={{
                           color: getUsageColor(disk.usagePercent),
                           fontWeight: 600,
-                          minWidth: 45,
+                          minWidth: 40,
+                          textAlign: 'right',
                         }}
                       >
                         {disk.usagePercent.toFixed(1)}%
@@ -97,8 +132,10 @@ export const DiskPanel: React.FC<DiskPanelProps> = ({ disks }) => {
         </TableContainer>
 
         {disks.length === 0 && (
-          <Box textAlign="center" py={3}>
-            <Typography color="text.secondary">No disk information available</Typography>
+          <Box textAlign="center" py={4}>
+            <Typography variant="body2" color="text.secondary">
+              No disk information available
+            </Typography>
           </Box>
         )}
       </CardContent>

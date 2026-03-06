@@ -1,5 +1,17 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+} from '@mui/material';
 import { ViewList as ProcessIcon } from '@mui/icons-material';
 
 interface ProcessPanelProps {
@@ -16,19 +28,17 @@ interface ProcessPanelProps {
 export const ProcessPanel: React.FC<ProcessPanelProps> = ({ processes, processCount }) => {
   const formatBytes = (bytes: number) => {
     const mb = bytes / 1024 / 1024;
-    if (mb >= 1000) {
-      return `${(mb / 1024).toFixed(2)} GB`;
-    }
+    if (mb >= 1000) return `${(mb / 1024).toFixed(2)} GB`;
     return `${mb.toFixed(0)} MB`;
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status.toLowerCase()) {
-      case 'running': return '#00ff88';
-      case 'sleeping': return '#00f0ff';
-      case 'stopped': return '#ffaa00';
-      case 'zombie': return '#ff3366';
-      default: return '#8888aa';
+      case 'running':  return '#34C759';
+      case 'sleeping': return '#5AC8FA';
+      case 'stopped':  return '#FF9500';
+      case 'zombie':   return '#FF3B30';
+      default:         return 'rgba(235,235,245,0.4)';
     }
   };
 
@@ -37,21 +47,23 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = ({ processes, processCo
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-          <Box display="flex" alignItems="center">
-            <ProcessIcon sx={{ fontSize: 32, color: '#00f0ff', mr: 1 }} />
-            <Typography variant="h5" sx={{ color: '#00f0ff', textShadow: '0 0 10px rgba(0,240,255,0.5)' }}>
-              PROCESSES
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <ProcessIcon sx={{ fontSize: 20, color: '#007AFF' }} />
+            <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
+              Processes
             </Typography>
           </Box>
-          <Chip 
+          <Chip
             label={`${processCount} total`}
-            sx={{ 
-              background: 'rgba(0,240,255,0.1)', 
-              color: '#00f0ff',
-              border: '1px solid rgba(0,240,255,0.3)',
-            }}
             size="small"
+            sx={{
+              background: 'rgba(0,122,255,0.12)',
+              color: '#007AFF',
+              border: '1px solid rgba(0,122,255,0.2)',
+              fontWeight: 500,
+              fontSize: 11,
+            }}
           />
         </Box>
 
@@ -59,45 +71,72 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = ({ processes, processCo
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }}>PID</TableCell>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }}>Name</TableCell>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }} align="right">Memory</TableCell>
-                <TableCell sx={{ color: '#00f0ff', fontWeight: 600 }} align="center">Status</TableCell>
+                <TableCell sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}>
+                  PID
+                </TableCell>
+                <TableCell sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}>
+                  Name
+                </TableCell>
+                <TableCell
+                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
+                  align="right"
+                >
+                  Memory
+                </TableCell>
+                <TableCell
+                  sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
+                  align="center"
+                >
+                  Status
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {sortedProcesses.slice(0, 15).map((process) => (
-                <TableRow key={process.pid} sx={{ '&:hover': { backgroundColor: 'rgba(0,240,255,0.08)' } }}>
+                <TableRow key={process.pid}>
                   <TableCell>
-                    <Typography sx={{ color: '#ff00ff', fontFamily: 'monospace', fontWeight: 600 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: '#5856D6', fontFamily: 'monospace', fontWeight: 500 }}
+                    >
                       {process.pid}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
-                        {process.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: 9, maxWidth: 200, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {process.command.substring(0, 50)}
-                      </Typography>
-                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {process.name}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: 9,
+                        maxWidth: 200,
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {process.command.substring(0, 60)}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <Typography sx={{ color: '#00ff88', fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ color: '#34C759', fontWeight: 500 }}>
                       {formatBytes(process.memoryUsage)}
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Chip 
+                    <Chip
                       label={process.status}
                       size="small"
-                      sx={{ 
-                        background: `${getStatusColor(process.status)}15`,
+                      sx={{
+                        background: `${getStatusColor(process.status)}18`,
                         color: getStatusColor(process.status),
-                        border: `1px solid ${getStatusColor(process.status)}40`,
+                        border: `1px solid ${getStatusColor(process.status)}35`,
                         fontSize: 10,
                         height: 20,
+                        fontWeight: 500,
                       }}
                     />
                   </TableCell>
@@ -108,8 +147,10 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = ({ processes, processCo
         </TableContainer>
 
         {processes.length === 0 && (
-          <Box textAlign="center" py={3}>
-            <Typography color="text.secondary">No process information available</Typography>
+          <Box textAlign="center" py={4}>
+            <Typography variant="body2" color="text.secondary">
+              No process information available
+            </Typography>
           </Box>
         )}
       </CardContent>

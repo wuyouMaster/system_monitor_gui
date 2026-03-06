@@ -1,88 +1,77 @@
-import { defineGlobalStyles } from '@mui/material/styles';
-
 export const techTheme = {
   palette: {
     mode: 'dark' as const,
     primary: {
-      main: '#00f0ff',
-      light: '#64f4ff',
-      dark: '#00a8b3',
+      main: '#007AFF',
+      light: '#5AC8FA',
+      dark: '#0062CC',
     },
     secondary: {
-      main: '#ff00ff',
-      light: '#ff66ff',
-      dark: '#b300b3',
+      main: '#5856D6',
+      light: '#7B79E0',
+      dark: '#3634A3',
     },
     success: {
-      main: '#00ff88',
-      light: '#66ffb3',
-      dark: '#00b359',
+      main: '#34C759',
+      light: '#5DD27B',
+      dark: '#248A3D',
     },
     warning: {
-      main: '#ffaa00',
-      light: '#ffc84d',
-      dark: '#b37700',
+      main: '#FF9500',
+      light: '#FFB340',
+      dark: '#C93400',
     },
     error: {
-      main: '#ff3366',
-      light: '#ff6688',
-      dark: '#b32447',
+      main: '#FF3B30',
+      light: '#FF6961',
+      dark: '#C0392B',
     },
     background: {
-      default: '#0a0a0f',
-      paper: '#12121a',
+      default: '#000000',
+      paper: '#1C1C1E',
     },
     text: {
-      primary: '#ffffff',
-      secondary: '#8888aa',
+      primary: '#FFFFFF',
+      secondary: 'rgba(235,235,245,0.6)',
     },
   },
   typography: {
-    fontFamily: '"Orbitron", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontFamily: '"Orbitron", sans-serif',
-      fontWeight: 700,
-    },
-    h2: {
-      fontFamily: '"Orbitron", sans-serif',
-      fontWeight: 600,
-    },
-    h3: {
-      fontFamily: '"Orbitron", sans-serif',
-      fontWeight: 600,
-    },
-    h4: {
-      fontFamily: '"Orbitron", sans-serif',
-      fontWeight: 500,
-    },
-    h5: {
-      fontFamily: '"Orbitron", sans-serif',
-      fontWeight: 500,
-    },
-    h6: {
-      fontFamily: '"Orbitron", sans-serif',
-      fontWeight: 500,
-    },
+    fontFamily:
+      '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Helvetica", "Arial", sans-serif',
+    h1: { fontWeight: 700, letterSpacing: -0.5 },
+    h2: { fontWeight: 700, letterSpacing: -0.5 },
+    h3: { fontWeight: 600, letterSpacing: -0.3 },
+    h4: { fontWeight: 600 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
   },
   components: {
     MuiCard: {
       styleOverrides: {
         root: {
-          backgroundImage: 'linear-gradient(135deg, rgba(0,240,255,0.05) 0%, rgba(255,0,255,0.05) 100%)',
-          border: '1px solid rgba(0,240,255,0.2)',
-          boxShadow: '0 0 20px rgba(0,240,255,0.1), inset 0 0 20px rgba(0,240,255,0.05)',
-          backdropFilter: 'blur(10px)',
+          background: 'rgba(28,28,30,0.92)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 2px 20px rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: 16,
+        },
+      },
+    },
+    MuiCardContent: {
+      styleOverrides: {
+        root: {
+          padding: '20px',
+          '&:last-child': { paddingBottom: '20px' },
         },
       },
     },
     MuiLinearProgress: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(0,240,255,0.1)',
+          backgroundColor: 'rgba(255,255,255,0.1)',
           borderRadius: '4px',
         },
         bar: {
-          backgroundImage: 'linear-gradient(90deg, #00f0ff, #00ff88)',
           borderRadius: '4px',
         },
       },
@@ -90,32 +79,34 @@ export const techTheme = {
     MuiButton: {
       styleOverrides: {
         root: {
-          backgroundImage: 'linear-gradient(135deg, #00f0ff, #0088ff)',
-          border: 'none',
-          boxShadow: '0 0 15px rgba(0,240,255,0.4)',
-          '&:hover': {
-            boxShadow: '0 0 25px rgba(0,240,255,0.6)',
-          },
+          background: '#007AFF',
+          borderRadius: 8,
+          textTransform: 'none',
+          fontWeight: 500,
+          '&:hover': { background: '#0062CC' },
         },
       },
     },
     MuiTableHead: {
       styleOverrides: {
-        root: {
-          background: 'linear-gradient(90deg, rgba(0,240,255,0.1), rgba(255,0,255,0.1))',
-        },
+        root: { background: 'transparent' },
       },
     },
     MuiTableRow: {
       styleOverrides: {
         root: {
-          '&:nth-of-type(even)': {
-            backgroundColor: 'rgba(0,240,255,0.02)',
-          },
-          '&:hover': {
-            backgroundColor: 'rgba(0,240,255,0.08)',
-          },
+          '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' },
         },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: { borderBottom: '1px solid rgba(255,255,255,0.06)' },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: { borderRadius: 6 },
       },
     },
   },
@@ -125,31 +116,7 @@ export const globalStyles = {
   body: {
     margin: 0,
     padding: 0,
-    background: 'radial-gradient(ellipse at center, #0a0a0f 0%, #050508 100%)',
+    background: '#000000',
     minHeight: '100vh',
-  },
-  '@keyframes pulse': {
-    '0%, 100%': {
-      boxShadow: '0 0 20px rgba(0,240,255,0.4)',
-    },
-    '50%': {
-      boxShadow: '0 0 40px rgba(0,240,255,0.8)',
-    },
-  },
-  '@keyframes scanline': {
-    '0%': {
-      transform: 'translateY(-100%)',
-    },
-    '100%': {
-      transform: 'translateY(100%)',
-    },
-  },
-  '@keyframes glow': {
-    '0%, 100%': {
-      textShadow: '0 0 10px rgba(0,240,255,0.5), 0 0 20px rgba(0,240,255,0.3)',
-    },
-    '50%': {
-      textShadow: '0 0 20px rgba(0,240,255,0.8), 0 0 30px rgba(0,240,255,0.5)',
-    },
   },
 };

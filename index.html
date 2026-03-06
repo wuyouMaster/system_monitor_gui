@@ -4,9 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Monitor</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
       * {
         margin: 0;
@@ -14,7 +11,7 @@
         box-sizing: border-box;
       }
       body {
-        background: radial-gradient(ellipse at center, #0a0a0f 0%, #050508 100%);
+        background: #000000;
         overflow-x: hidden;
       }
       ::-webkit-scrollbar {
@@ -22,38 +19,14 @@
         height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: rgba(0, 240, 255, 0.05);
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(0, 240, 255, 0.3);
+        background: rgba(255, 255, 255, 0.2);
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 240, 255, 0.5);
-      }
-      @keyframes scanline {
-        0% {
-          transform: translateY(-100%);
-        }
-        100% {
-          transform: translateY(100vh);
-        }
-      }
-      body::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          to bottom,
-          transparent 50%,
-          rgba(0, 240, 255, 0.02) 51%
-        );
-        background-size: 100% 4px;
-        pointer-events: none;
-        z-index: 9999;
+        background: rgba(255, 255, 255, 0.35);
       }
     </style>
   </head>

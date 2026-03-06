@@ -12,6 +12,13 @@ interface MemoryInfoProps {
   };
 }
 
+const STAT_BOX = {
+  background: 'rgba(255,255,255,0.05)',
+  p: 1.5,
+  borderRadius: 2,
+  border: '1px solid rgba(255,255,255,0.07)',
+};
+
 export const MemoryPanel: React.FC<MemoryInfoProps> = ({ memory }) => {
   const formatBytes = (bytes: number) => {
     const gb = bytes / 1024 / 1024 / 1024;
@@ -19,72 +26,82 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = ({ memory }) => {
   };
 
   const getUsageColor = (percent: number) => {
-    if (percent < 50) return '#00ff88';
-    if (percent < 75) return '#ffaa00';
-    return '#ff3366';
+    if (percent < 60) return '#34C759';
+    if (percent < 80) return '#FF9500';
+    return '#FF3B30';
   };
+
+  const color = getUsageColor(memory.usagePercent);
 
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Box display="flex" alignItems="center" mb={2}>
-          <MemoryIcon sx={{ fontSize: 32, color: '#00f0ff', mr: 1 }} />
-          <Typography variant="h5" sx={{ color: '#00f0ff', textShadow: '0 0 10px rgba(0,240,255,0.5)' }}>
-            MEMORY
+        <Box display="flex" alignItems="center" mb={2.5} gap={1}>
+          <MemoryIcon sx={{ fontSize: 20, color: '#007AFF' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
+            Memory
           </Typography>
         </Box>
 
-        <Box mb={3}>
-          <Box display="flex" justifyContent="space-between" mb={1}>
-            <Typography variant="body2" color="text.secondary">Usage</Typography>
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                color: getUsageColor(memory.usagePercent),
-                textShadow: `0 0 10px ${getUsageColor(memory.usagePercent)}80`,
-                fontWeight: 700,
-              }}
-            >
+        <Box mb={2.5}>
+          <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={1}>
+            <Typography variant="body2" color="text.secondary">
+              Usage
+            </Typography>
+            <Typography variant="h4" sx={{ color, fontWeight: 700, letterSpacing: -0.5 }}>
               {memory.usagePercent.toFixed(1)}%
             </Typography>
           </Box>
-          <LinearProgress 
-            variant="determinate" 
+          <LinearProgress
+            variant="determinate"
             value={memory.usagePercent}
-            sx={{ 
-              height: 12, 
-              borderRadius: 6,
-              '& .MuiLinearProgress-bar': {
-                background: `linear-gradient(90deg, ${getUsageColor(memory.usagePercent)}, #00f0ff)`,
-                boxShadow: `0 0 10px ${getUsageColor(memory.usagePercent)}`,
-              },
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              '& .MuiLinearProgress-bar': { background: color },
             }}
           />
         </Box>
 
-        <Grid container spacing={2}>
+        <Grid container spacing={1.5}>
           <Grid item xs={6}>
-            <Box sx={{ background: 'rgba(0,240,255,0.05)', p: 2, borderRadius: 2, border: '1px solid rgba(0,240,255,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Total</Typography>
-              <Typography variant="h6" sx={{ color: '#fff' }}>{formatBytes(memory.total)}</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Total
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.25 }}>
+                {formatBytes(memory.total)}
+              </Typography>
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Box sx={{ background: 'rgba(0,255,136,0.05)', p: 2, borderRadius: 2, border: '1px solid rgba(0,255,136,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Available</Typography>
-              <Typography variant="h6" sx={{ color: '#00ff88' }}>{formatBytes(memory.available)}</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Available
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#34C759', fontWeight: 600, mt: 0.25 }}>
+                {formatBytes(memory.available)}
+              </Typography>
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Box sx={{ background: 'rgba(255,170,0,0.05)', p: 2, borderRadius: 2, border: '1px solid rgba(255,170,0,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Used</Typography>
-              <Typography variant="h6" sx={{ color: '#ffaa00' }}>{formatBytes(memory.used)}</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Used
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#FF9500', fontWeight: 600, mt: 0.25 }}>
+                {formatBytes(memory.used)}
+              </Typography>
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Box sx={{ background: 'rgba(0,136,255,0.05)', p: 2, borderRadius: 2, border: '1px solid rgba(0,136,255,0.2)' }}>
-              <Typography variant="caption" color="text.secondary">Free</Typography>
-              <Typography variant="h6" sx={{ color: '#0088ff' }}>{formatBytes(memory.free)}</Typography>
+            <Box sx={STAT_BOX}>
+              <Typography variant="caption" color="text.secondary">
+                Free
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#007AFF', fontWeight: 600, mt: 0.25 }}>
+                {formatBytes(memory.free)}
+              </Typography>
             </Box>
           </Grid>
         </Grid>
