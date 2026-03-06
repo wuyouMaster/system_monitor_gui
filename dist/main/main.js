@@ -60,7 +60,7 @@ function createWindow() {
     minHeight: 800,
     frame: true,
     titleBarStyle: "default",
-    backgroundColor: "#0a0a0f",
+    backgroundColor: "#000000",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -70,7 +70,6 @@ function createWindow() {
   const isDev = process.env.VITE_DEV_SERVER_URL;
   if (isDev) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
