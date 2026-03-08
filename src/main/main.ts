@@ -103,7 +103,6 @@ function createWindow() {
 
   const isDev = process.env.VITE_DEV_SERVER_URL;
   if (isDev) {
-    win.webContents.openDevTools();
     win.loadURL(process.env.VITE_DEV_SERVER_URL as string);
   } else {
     win.loadFile(path.join(__dirname, '../renderer/index.html'));
