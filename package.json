@@ -8,9 +8,9 @@
     "build": "tsc && vite build && electron-builder",
     "build:rust": "cd ../query_system_info/js-abi && yarn install && yarn build",
     "copy:native": "node scripts/copy-native.js",
-    "predev": "npm run copy:native",
+    "predev": "yarn run copy:native",
     "preview": "vite preview",
-    "electron:dev": "npm run build:rust && npm run copy:native && vite",
+    "electron:dev": "yarn run build:rust && yarn run copy:native && vite",
     "electron:build": "vite build && electron-builder"
   },
   "dependencies": {

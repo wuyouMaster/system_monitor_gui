@@ -96,7 +96,9 @@ export const techTheme = {
       styleOverrides: {
         root: {
           // Hover disabled: prevents hit-test on every pointermove across all table rows
-          pointerEvents: 'none',
+          '&': {
+            pointerEvents: 'none',
+          },
         },
       },
     },
