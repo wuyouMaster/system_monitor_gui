@@ -113,11 +113,6 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) 
           </Typography>
         </Box>
 
-        {/*
-          Tooltip removed: it attaches a mousemove listener that caused ~36ms pointermove longtasks.
-          pointer-events: none on the chart wrapper prevents any hit-testing inside the SVG.
-          isAnimationActive={false} on Line prevents JS animation frames during data updates.
-        */}
         <Box sx={CHART_BOX_SX}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
@@ -143,6 +138,23 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) 
                 strokeWidth={1.5}
                 dot={false}
                 isAnimationActive={false}
+                label={({ x, y, value, index }) => {
+                  const usage = validUsage[index];
+                  if (!Number.isFinite(usage)) return null;
+                  return (
+                    <text
+                      key={index}
+                      x={x}
+                      y={y - 8}
+                      textAnchor="middle"
+                      fill={getUsageColor(usage)}
+                      fontSize={9}
+                      fontWeight={600}
+                    >
+                      {usage.toFixed(0)}%
+                    </text>
+                  );
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
