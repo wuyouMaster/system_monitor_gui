@@ -1,4 +1,4 @@
-import React, { startTransition, useEffect, useState } from 'react';
+import React, { startTransition, useEffect, useRef, useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { MemoryPanel } from './MemoryPanel';
 import { CpuPanel } from './CpuPanel';
@@ -29,40 +29,74 @@ export const Dashboard: React.FC = () => {
   const [processes,     setProcesses]     = useState<any[]>(EMPTY_ARR);
   const [processCount,  setProcessCount]  = useState(0);
   const [ready,         setReady]         = useState(false);
+  const readyRef = useRef(false);
 
   useEffect(() => {
+    // Buffer IPC payloads and commit state on the next animation frame.
+    // This keeps input/scroll handling smooth under bursty native updates.
+    const pendingRef: {
+      fast?: { memory: any; cpu: any; cpuUsage: number[] };
+      slow?: { disks: any[]; socketSummary: any; connections: any[] };
+      proc?: { processes: any[]; processCount: number };
+    } = {};
+    const rafIdRef = { current: 0 };
+    const scheduleFlush = () => {
+      if (rafIdRef.current) return;
+      rafIdRef.current = window.requestAnimationFrame(() => {
+        rafIdRef.current = 0;
+        const fast = pendingRef.fast;
+        const slow = pendingRef.slow;
+        const proc = pendingRef.proc;
+        pendingRef.fast = undefined;
+        pendingRef.slow = undefined;
+        pendingRef.proc = undefined;
+
+        startTransition(() => {
+          if (fast) {
+            setMemory(fast.memory);
+            setCpu(fast.cpu);
+            setCpuUsage(fast.cpuUsage);
+            if (!readyRef.current) {
+              readyRef.current = true;
+              setReady(true);
+            }
+          }
+          if (slow) {
+            setDisks(slow.disks);
+            setSocketSummary(slow.socketSummary);
+            setConnections(slow.connections);
+          }
+          if (proc) {
+            setProcesses(proc.processes);
+            setProcessCount(proc.processCount);
+          }
+        });
+      });
+    };
+
     // Subscribe to main-process push events.
     // Each unsub function is returned by the preload helper.
     const unsubFast = window.systemInfo.onFastData((d) => {
-      startTransition(() => {
-        setMemory(d.memory);
-        setCpu(d.cpu);
-        setCpuUsage(d.cpuUsage);
-        if (!ready) setReady(true);
-      });
+      pendingRef.fast = d;
+      scheduleFlush();
     });
 
     const unsubSlow = window.systemInfo.onSlowData((d) => {
-      startTransition(() => {
-        setDisks(d.disks);
-        setSocketSummary(d.socketSummary);
-        setConnections(d.connections);
-      });
+      pendingRef.slow = d;
+      scheduleFlush();
     });
 
     const unsubProc = window.systemInfo.onProcessData((d) => {
-      startTransition(() => {
-        setProcesses(d.processes);
-        setProcessCount(d.processCount);
-      });
+      pendingRef.proc = d;
+      scheduleFlush();
     });
 
     return () => {
       unsubFast();
       unsubSlow();
       unsubProc();
+      if (rafIdRef.current) window.cancelAnimationFrame(rafIdRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!ready) {

@@ -62,6 +62,14 @@ export default defineConfig({
           },
         },
       },
+      {
+        entry: 'src/main/native-worker.ts',
+        vite: {
+          build: {
+            outDir: 'dist/main',
+          },
+        },
+      },
     ]),
     renderer({
       onstart(options) {

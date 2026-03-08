@@ -2,8 +2,10 @@
 const electron = require("electron");
 const path = require("path");
 const fs = require("fs");
+const worker_threads = require("worker_threads");
 let sysInfoModule = null;
 let win = null;
+let nativeWorker = null;
 function getNativeModuleName() {
   const platformMap = { darwin: "darwin", linux: "linux", win32: "win32" };
   const archMap = { x64: "x64", arm64: "arm64", ia32: "ia32" };
@@ -42,63 +44,29 @@ function send(channel, payload) {
     win.webContents.send(channel, payload);
   }
 }
-const CPU_SAMPLE_SECS = 0.5;
-function pushFast() {
-  if (!sysInfoModule) return;
-  try {
-    const summary = new sysInfoModule.JsSystemSummary(CPU_SAMPLE_SECS);
-    send("data:fast", {
-      memory: summary.getMemoryInfo(),
-      cpu: summary.getCpuInfo(),
-      cpuUsage: summary.getCpuUsage()
-    });
-  } catch (e) {
-    console.error("pushFast error:", e);
-  }
+function startDataWorker() {
+  if (nativeWorker) return;
+  const workerPath = path.join(__dirname, "native-worker.js");
+  nativeWorker = new worker_threads.Worker(workerPath);
+  nativeWorker.on("message", (msg) => {
+    if (msg.channel) send(msg.channel, msg.payload);
+  });
+  nativeWorker.on("error", (err) => {
+    console.error("native worker error:", err);
+  });
+  nativeWorker.on("exit", (code) => {
+    if (code !== 0) {
+      console.error(`native worker exited with code ${code}`);
+    }
+    nativeWorker = null;
+  });
+  nativeWorker.postMessage({ type: "start" });
 }
-function pushSlow() {
-  if (!sysInfoModule) return;
-  try {
-    send("data:slow", {
-      disks: sysInfoModule.jsGetDisks(),
-      socketSummary: sysInfoModule.jsGetSocketSummary(),
-      connections: sysInfoModule.getConnections().slice(0, 50)
-    });
-  } catch (e) {
-    console.error("pushSlow error:", e);
-  }
-}
-function pushProcesses() {
-  if (!sysInfoModule) return;
-  try {
-    const processes = sysInfoModule.getProcesses().slice(0, 200);
-    send("data:processes", {
-      processes,
-      processCount: processes.length
-    });
-  } catch (e) {
-    console.error("pushProcesses error:", e);
-  }
-}
-let fastTimer = null;
-let slowTimer = null;
-let procTimer = null;
-function startDataTimers() {
-  pushFast();
-  setTimeout(() => {
-    pushSlow();
-    slowTimer = setInterval(pushSlow, 4e3);
-  }, 500);
-  setTimeout(() => {
-    pushProcesses();
-    procTimer = setInterval(pushProcesses, 3e3);
-  }, 1e3);
-  fastTimer = setInterval(pushFast, 1500);
-}
-function stopDataTimers() {
-  if (fastTimer) clearInterval(fastTimer);
-  if (slowTimer) clearInterval(slowTimer);
-  if (procTimer) clearInterval(procTimer);
+function stopDataWorker() {
+  if (!nativeWorker) return;
+  nativeWorker.postMessage({ type: "stop" });
+  nativeWorker.terminate();
+  nativeWorker = null;
 }
 function createWindow() {
   win = new electron.BrowserWindow({
@@ -117,7 +85,7 @@ function createWindow() {
     }
   });
   win.on("closed", () => {
-    stopDataTimers();
+    stopDataWorker();
     win = null;
   });
   const isDev = process.env.VITE_DEV_SERVER_URL;
@@ -129,7 +97,7 @@ function createWindow() {
   }
   win.webContents.once("did-finish-load", () => {
     loadNativeModule();
-    startDataTimers();
+    startDataWorker();
   });
 }
 electron.ipcMain.handle("get-memory-info", async () => sysInfoModule == null ? void 0 : sysInfoModule.jsGetMemoryInfo());
