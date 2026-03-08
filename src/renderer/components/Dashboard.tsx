@@ -1,5 +1,5 @@
 import React, { startTransition, useEffect, useRef, useState } from 'react';
-import { Box, Typography, CircularProgress } from '@mui/material';
+import { Box, Typography, CircularProgress, Tabs, Tab } from '@mui/material';
 import { MemoryPanel } from './MemoryPanel';
 import { CpuPanel } from './CpuPanel';
 import { DiskPanel } from './DiskPanel';
@@ -20,6 +20,7 @@ const EMPTY_SUMMARY = {} as any;
 const EMPTY_ARR: never[] = [];
 
 export const Dashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState(0);
   const [memory,        setMemory]        = useState<any>(EMPTY_MEMORY);
   const [cpu,           setCpu]           = useState<any>(EMPTY_CPU);
   const [cpuUsage,      setCpuUsage]      = useState<number[]>(EMPTY_ARR);
@@ -145,21 +146,49 @@ export const Dashboard: React.FC = () => {
           </Typography>
         </Box>
 
-        {/* Top Row: Memory, CPU, Network */}
-        <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={2.5} mb={2.5}>
-          <MemoryPanel memory={memory} />
-          <CpuPanel cpu={cpu} cpuUsage={cpuUsage} />
-          <SocketPanel socketSummary={socketSummary} connections={connections} />
-        </Box>
-
-        {/* Bottom Row: Disk, Processes */}
+        {/* Left tabs + right single-panel content */}
         <Box
           display="grid"
-          gridTemplateColumns="repeat(2, 1fr)"
+          gridTemplateColumns="220px 1fr"
           gap={2.5}
+          alignItems="start"
         >
-          <DiskPanel disks={disks} />
-          <ProcessPanel processes={processes} processCount={processCount} />
+          <Box
+            sx={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 2,
+              p: 1,
+            }}
+          >
+            <Tabs
+              orientation="vertical"
+              value={activeTab}
+              onChange={(_, value: number) => setActiveTab(value)}
+              variant="scrollable"
+              scrollButtons={false}
+              sx={{
+                minHeight: 320,
+                '& .MuiTabs-indicator': { left: 0, width: 3, borderRadius: 2, backgroundColor: '#007AFF' },
+              }}
+            >
+              <Tab label="Memory" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
+              <Tab label="CPU" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
+              <Tab label="Socket" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
+              <Tab label="Disk" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
+              <Tab label="Processes" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
+            </Tabs>
+          </Box>
+
+          <Box sx={{ minHeight: 'calc(100vh - 240px)', display: 'flex' }}>
+            <Box sx={{ flex: 1 }}>
+              {activeTab === 0 && <MemoryPanel memory={memory} />}
+              {activeTab === 1 && <CpuPanel cpu={cpu} cpuUsage={cpuUsage} />}
+              {activeTab === 2 && <SocketPanel socketSummary={socketSummary} connections={connections} />}
+              {activeTab === 3 && <DiskPanel disks={disks} />}
+              {activeTab === 4 && <ProcessPanel processes={processes} processCount={processCount} />}
+            </Box>
+          </Box>
         </Box>
 
         {/* Footer */}
