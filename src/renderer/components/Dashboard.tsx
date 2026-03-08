@@ -152,12 +152,11 @@ export const Dashboard: React.FC = () => {
           <SocketPanel socketSummary={socketSummary} connections={connections} />
         </Box>
 
-        {/* Bottom Row: Disk, Processes — fixed row height gives the virtual list a stable container */}
+        {/* Bottom Row: Disk, Processes */}
         <Box
           display="grid"
           gridTemplateColumns="repeat(2, 1fr)"
           gap={2.5}
-          sx={{ gridAutoRows: '460px' }}
         >
           <DiskPanel disks={disks} />
           <ProcessPanel processes={processes} processCount={processCount} />
