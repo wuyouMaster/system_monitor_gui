@@ -1,5 +1,12 @@
 import React, { startTransition, useEffect, useRef, useState } from 'react';
-import { Box, Typography, CircularProgress, Tabs, Tab } from '@mui/material';
+import { Box, Typography, CircularProgress, Tabs, Tab, Chip } from '@mui/material';
+import {
+  Memory as MemoryIcon,
+  DeveloperBoard as CpuIcon,
+  Router as SocketIcon,
+  Storage as DiskIcon,
+  ViewList as ProcessIcon,
+} from '@mui/icons-material';
 import { MemoryPanel } from './MemoryPanel';
 import { CpuPanel } from './CpuPanel';
 import { DiskPanel } from './DiskPanel';
@@ -31,6 +38,43 @@ export const Dashboard: React.FC = () => {
   const [processCount,  setProcessCount]  = useState(0);
   const [ready,         setReady]         = useState(false);
   const readyRef = useRef(false);
+  const avgCpuUsage =
+    cpuUsage.length > 0
+      ? cpuUsage.filter(Number.isFinite).reduce((a, b) => a + b, 0) / cpuUsage.length
+      : 0;
+
+  const tabItems = [
+    {
+      key: 'memory',
+      label: 'Memory',
+      icon: <MemoryIcon sx={{ fontSize: 18, color: '#5AC8FA' }} />,
+      value: `${(memory?.usagePercent ?? 0).toFixed(1)}%`,
+    },
+    {
+      key: 'cpu',
+      label: 'CPU',
+      icon: <CpuIcon sx={{ fontSize: 18, color: '#FF9500' }} />,
+      value: `${avgCpuUsage.toFixed(1)}%`,
+    },
+    {
+      key: 'socket',
+      label: 'Socket',
+      icon: <SocketIcon sx={{ fontSize: 18, color: '#34C759' }} />,
+      value: `${socketSummary?.established ?? 0} est.`,
+    },
+    {
+      key: 'disk',
+      label: 'Disk',
+      icon: <DiskIcon sx={{ fontSize: 18, color: '#5856D6' }} />,
+      value: `${disks.length} mounts`,
+    },
+    {
+      key: 'process',
+      label: 'Processes',
+      icon: <ProcessIcon sx={{ fontSize: 18, color: '#FF2D55' }} />,
+      value: `${processCount} total`,
+    },
+  ];
 
   useEffect(() => {
     // Buffer IPC payloads and commit state on the next animation frame.
@@ -155,12 +199,19 @@ export const Dashboard: React.FC = () => {
         >
           <Box
             sx={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 2,
-              p: 1,
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 3,
+              p: 1.2,
+              backdropFilter: 'blur(8px)',
             }}
           >
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', px: 1.2, pb: 1, color: 'rgba(235,235,245,0.5)', letterSpacing: 0.3 }}
+            >
+              PANELS
+            </Typography>
             <Tabs
               orientation="vertical"
               value={activeTab}
@@ -169,14 +220,69 @@ export const Dashboard: React.FC = () => {
               scrollButtons={false}
               sx={{
                 minHeight: 320,
-                '& .MuiTabs-indicator': { left: 0, width: 3, borderRadius: 2, backgroundColor: '#007AFF' },
+                '& .MuiTabs-indicator': { display: 'none' },
               }}
             >
-              <Tab label="Memory" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
-              <Tab label="CPU" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
-              <Tab label="Socket" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
-              <Tab label="Disk" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
-              <Tab label="Processes" sx={{ alignItems: 'flex-start', textTransform: 'none' }} />
+              {tabItems.map((tab) => (
+                <Tab
+                  key={tab.key}
+                  disableRipple
+                  label={
+                    <Box
+                      sx={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {tab.icon}
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.92)' }}>
+                          {tab.label}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={tab.value}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          maxWidth: 90,
+                          '& .MuiChip-label': {
+                            px: 0.8,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: 'rgba(235,235,245,0.82)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          },
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          background: 'rgba(255,255,255,0.08)',
+                        }}
+                      />
+                    </Box>
+                  }
+                  sx={{
+                    alignItems: 'stretch',
+                    justifyContent: 'flex-start',
+                    textTransform: 'none',
+                    minHeight: 52,
+                    borderRadius: 2,
+                    mb: 0.5,
+                    px: 1,
+                    transition: 'all 120ms ease-out',
+                    '&:hover': {
+                      background: 'rgba(255,255,255,0.06)',
+                    },
+                    '&.Mui-selected': {
+                      background: 'linear-gradient(90deg, rgba(0,122,255,0.22) 0%, rgba(0,122,255,0.06) 100%)',
+                      border: '1px solid rgba(0,122,255,0.35)',
+                      boxShadow: 'inset 0 0 0 1px rgba(0,122,255,0.15)',
+                    },
+                  }}
+                />
+              ))}
             </Tabs>
           </Box>
 
