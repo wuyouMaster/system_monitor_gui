@@ -1,7 +1,20 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Card, CardContent, Typography, Box, Chip } from '@mui/material';
-import { ViewList as ProcessIcon } from '@mui/icons-material';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Chip,
+  TextField,
+  InputAdornment,
+  IconButton,
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  ViewList as ProcessIcon,
+  Close as ClearIcon,
+} from '@mui/icons-material';
 
 interface Process {
   pid: number;
@@ -56,9 +69,51 @@ const HEADER_CELL_SX = {
   lineHeight: 1,
 } as const;
 
+const renderHighlightedText = (text: string, rawQuery: string): React.ReactNode => {
+  const query = rawQuery.trim();
+  if (!query) return text;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const matchedParts: React.ReactNode[] = [];
+  let fromIndex = 0;
+  let matchIndex = lowerText.indexOf(lowerQuery, fromIndex);
+
+  while (matchIndex !== -1) {
+    if (matchIndex > fromIndex) {
+      matchedParts.push(text.slice(fromIndex, matchIndex));
+    }
+
+    matchedParts.push(
+      <Box
+        key={`${matchIndex}-${fromIndex}`}
+        component="span"
+        sx={{
+          background: 'rgba(255,149,0,0.28)',
+          color: '#FFD60A',
+          borderRadius: '3px',
+          px: '1px',
+        }}
+      >
+        {text.slice(matchIndex, matchIndex + query.length)}
+      </Box>,
+    );
+
+    fromIndex = matchIndex + query.length;
+    matchIndex = lowerText.indexOf(lowerQuery, fromIndex);
+  }
+
+  if (fromIndex < text.length) {
+    matchedParts.push(text.slice(fromIndex));
+  }
+
+  return matchedParts;
+};
+
 // Individual row — memoized so it only re-renders when its own process data changes
-const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties }> = React.memo(
-  ({ process, style }) => {
+const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties; searchTerm: string }> =
+  React.memo(
+  ({ process, style, searchTerm }) => {
     const color = getStatusColor(process.status);
     return (
       // VSCode pattern: position:absolute + transform:translateY moves the row to the
@@ -84,7 +139,7 @@ const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties }> = R
           variant="body2"
           sx={{ color: '#5856D6', fontFamily: 'monospace', fontWeight: 500 }}
         >
-          {process.pid}
+          {renderHighlightedText(process.pid.toString(), searchTerm)}
         </Typography>
 
         {/* Name + command */}
@@ -93,7 +148,7 @@ const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties }> = R
             variant="body2"
             sx={{ fontWeight: 500, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
           >
-            {process.name}
+            {renderHighlightedText(process.name, searchTerm)}
           </Typography>
           <Typography
             variant="caption"
@@ -135,14 +190,26 @@ const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties }> = R
 export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
   ({ processes, processCount }) => {
     const parentRef = useRef<HTMLDivElement>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const sortedProcesses = useMemo(
       () => [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage),
       [processes],
     );
 
+    const filteredProcesses = useMemo(() => {
+      const query = searchTerm.trim().toLowerCase();
+      if (!query) return sortedProcesses;
+
+      return sortedProcesses.filter((process) => {
+        const pidMatched = process.pid.toString().includes(query);
+        const nameMatched = process.name.toLowerCase().includes(query);
+        return pidMatched || nameMatched;
+      });
+    }, [searchTerm, sortedProcesses]);
+
     const rowVirtualizer = useVirtualizer({
-      count: sortedProcesses.length,
+      count: filteredProcesses.length,
       getScrollElement: () => parentRef.current,
       // Fixed row height → O(1) scroll math, no measurement needed
       estimateSize: () => ROW_HEIGHT,
@@ -187,6 +254,35 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
             />
           </Box>
 
+          <TextField
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search by PID or process name"
+            size="small"
+            fullWidth
+            sx={{ mb: 1.5, flexShrink: 0 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 18, color: 'rgba(235,235,245,0.55)' }} />
+                </InputAdornment>
+              ),
+              endAdornment: searchTerm.trim() ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="Clear process search"
+                    edge="end"
+                    size="small"
+                    onClick={() => setSearchTerm('')}
+                    sx={{ color: 'rgba(235,235,245,0.55)' }}
+                  >
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            }}
+          />
+
           {/* Column headers — sticky, no scroll */}
           <Box
             display="grid"
@@ -217,7 +313,8 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
               {rowVirtualizer.getVirtualItems().map((virtualRow) => (
                 <ProcessRow
                   key={virtualRow.key}
-                  process={sortedProcesses[virtualRow.index]}
+                  process={filteredProcesses[virtualRow.index]}
+                  searchTerm={searchTerm}
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                 />
               ))}
@@ -228,6 +325,14 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
             <Box textAlign="center" py={4} sx={{ pointerEvents: 'none' }}>
               <Typography variant="body2" color="text.secondary">
                 No process information available
+              </Typography>
+            </Box>
+          )}
+
+          {processes.length > 0 && filteredProcesses.length === 0 && (
+            <Box textAlign="center" py={4} sx={{ pointerEvents: 'none' }}>
+              <Typography variant="body2" color="text.secondary">
+                No matching processes
               </Typography>
             </Box>
           )}

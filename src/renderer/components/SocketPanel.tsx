@@ -1,6 +1,15 @@
-import React from 'react';
-import { Card, CardContent, Typography, Box, Grid } from '@mui/material';
-import { Router as SocketIcon } from '@mui/icons-material';
+import React, { useMemo, useState } from 'react';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Grid,
+  TextField,
+  MenuItem,
+  InputAdornment,
+} from '@mui/material';
+import { Router as SocketIcon, Search as SearchIcon } from '@mui/icons-material';
 
 interface SocketPanelProps {
   socketSummary: {
@@ -63,6 +72,38 @@ const StatBox = ({
 
 export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
   ({ socketSummary, connections }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedState, setSelectedState] = useState('all');
+
+    const stateOptions = useMemo(() => {
+      const states = new Set<string>();
+      connections.forEach((conn) => {
+        if (conn.state) states.add(conn.state);
+      });
+      return Array.from(states).sort((a, b) => a.localeCompare(b));
+    }, [connections]);
+
+    const filteredConnections = useMemo(() => {
+      const query = searchTerm.trim().toLowerCase();
+
+      return connections.filter((conn) => {
+        const stateMatched =
+          selectedState === 'all' || conn.state.toLowerCase() === selectedState.toLowerCase();
+
+        if (!stateMatched) return false;
+        if (!query) return true;
+
+        const localMatched = conn.localAddr.toLowerCase().includes(query);
+        const remoteMatched = conn.remoteAddr.toLowerCase().includes(query);
+        return localMatched || remoteMatched;
+      });
+    }, [connections, searchTerm, selectedState]);
+
+    const displayedConnections = useMemo(
+      () => filteredConnections.slice(0, 10),
+      [filteredConnections],
+    );
+
     return (
       <Card sx={{ height: '100%' }}>
         <CardContent>
@@ -110,6 +151,37 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
             Recent Connections
           </Typography>
 
+          <Box display="flex" gap={1.5} mb={1.5}>
+            <TextField
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by IP or port"
+              size="small"
+              fullWidth
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 18, color: 'rgba(235,235,245,0.55)' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              select
+              size="small"
+              value={selectedState}
+              onChange={(event) => setSelectedState(event.target.value)}
+              sx={{ minWidth: 140 }}
+            >
+              <MenuItem value="all">All status</MenuItem>
+              {stateOptions.map((state) => (
+                <MenuItem key={state} value={state}>
+                  {state}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
           {/*
             No nested scroll container here.
             A nested overflow:auto inside a scrolling parent creates "scroll chaining":
@@ -118,7 +190,7 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
             Showing items inline avoids any scroll competition entirely.
           */}
           <Box sx={{ pointerEvents: 'none' }}>
-            {connections.slice(0, 10).map((conn, index) => (
+            {displayedConnections.map((conn, index) => (
               <Box key={index} sx={CONN_ITEM_SX}>
                 <Box>
                   <Typography
@@ -158,6 +230,11 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
             {connections.length === 0 && (
               <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
                 No connections
+              </Typography>
+            )}
+            {connections.length > 0 && filteredConnections.length === 0 && (
+              <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
+                No matching connections
               </Typography>
             )}
           </Box>
