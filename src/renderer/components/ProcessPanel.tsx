@@ -15,6 +15,7 @@ import {
   ViewList as ProcessIcon,
   Close as ClearIcon,
 } from '@mui/icons-material';
+import { i18n, type Locale } from '../i18n';
 
 interface Process {
   pid: number;
@@ -25,6 +26,7 @@ interface Process {
 }
 
 interface ProcessPanelProps {
+  locale: Locale;
   processes: Process[];
   processCount: number;
 }
@@ -188,7 +190,8 @@ const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties; searc
 );
 
 export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
-  ({ processes, processCount }) => {
+  ({ processes, processCount, locale }) => {
+    const text = i18n[locale].process;
     const parentRef = useRef<HTMLDivElement>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -238,11 +241,11 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
             <Box display="flex" alignItems="center" gap={1}>
               <ProcessIcon sx={{ fontSize: 20, color: '#007AFF' }} />
               <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
-                Processes
+                {text.title}
               </Typography>
             </Box>
             <Chip
-              label={`${processCount} total`}
+              label={`${processCount} ${text.total}`}
               size="small"
               sx={{
                 background: 'rgba(0,122,255,0.12)',
@@ -257,7 +260,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
           <TextField
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search by PID or process name"
+            placeholder={text.searchPlaceholder}
             size="small"
             fullWidth
             sx={{ mb: 1.5, flexShrink: 0 }}
@@ -270,7 +273,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
               endAdornment: searchTerm.trim() ? (
                 <InputAdornment position="end">
                   <IconButton
-                    aria-label="Clear process search"
+                    aria-label={text.clearSearchAria}
                     edge="end"
                     size="small"
                     onClick={() => setSearchTerm('')}
@@ -297,9 +300,9 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
             }}
           >
             <Typography sx={HEADER_CELL_SX}>PID</Typography>
-            <Typography sx={HEADER_CELL_SX}>Name</Typography>
-            <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'right' }}>Memory</Typography>
-            <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'center' }}>Status</Typography>
+            <Typography sx={HEADER_CELL_SX}>{text.name}</Typography>
+            <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'right' }}>{text.memory}</Typography>
+            <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'center' }}>{text.status}</Typography>
           </Box>
 
           {/* Virtual scroll viewport */}
@@ -324,7 +327,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
           {processes.length === 0 && (
             <Box textAlign="center" py={4} sx={{ pointerEvents: 'none' }}>
               <Typography variant="body2" color="text.secondary">
-                No process information available
+                {text.noProcessInfo}
               </Typography>
             </Box>
           )}
@@ -332,7 +335,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
           {processes.length > 0 && filteredProcesses.length === 0 && (
             <Box textAlign="center" py={4} sx={{ pointerEvents: 'none' }}>
               <Typography variant="body2" color="text.secondary">
-                No matching processes
+                {text.noMatchingProcesses}
               </Typography>
             </Box>
           )}

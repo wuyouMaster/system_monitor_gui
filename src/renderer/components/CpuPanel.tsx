@@ -2,8 +2,10 @@ import React, { useMemo, useRef } from 'react';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import { DeveloperBoard as CpuIcon } from '@mui/icons-material';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { i18n, type Locale } from '../i18n';
 
 interface CpuPanelProps {
+  locale: Locale;
   cpu: {
     physicalCores: number;
     logicalCores: number;
@@ -24,12 +26,15 @@ const getUsageColor = (percent: number) => {
 };
 
 interface CpuCoreCardProps {
+  locale: Locale;
   coreIndex: number;
   usageHistory: number[];
   currentUsage: number;
 }
 
-const CpuCoreCard: React.FC<CpuCoreCardProps> = React.memo(({ coreIndex, usageHistory, currentUsage }) => {
+const CpuCoreCard: React.FC<CpuCoreCardProps> = React.memo(
+  ({ coreIndex, usageHistory, currentUsage, locale }) => {
+  const text = i18n[locale].cpu;
   const chartData = useMemo(
     () => usageHistory.map((usage, index) => ({ index, usage })),
     [usageHistory]
@@ -42,7 +47,7 @@ const CpuCoreCard: React.FC<CpuCoreCardProps> = React.memo(({ coreIndex, usageHi
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
           <Typography variant="caption" sx={{ color: 'rgba(235,235,245,0.5)', fontWeight: 500 }}>
-            Core {coreIndex}
+            {text.core} {coreIndex}
           </Typography>
           <Typography 
             variant="body2" 
@@ -76,7 +81,8 @@ const CpuCoreCard: React.FC<CpuCoreCardProps> = React.memo(({ coreIndex, usageHi
   );
 });
 
-export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) => {
+export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage, locale }) => {
+  const text = i18n[locale].cpu;
   // Filter out NaN/Infinity values
   const validUsage = useMemo(
     () => cpuUsage.filter((v) => Number.isFinite(v)),
@@ -128,7 +134,7 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) 
         <Box display="flex" alignItems="center" mb={2} gap={1} sx={{ pointerEvents: 'none' }}>
           <CpuIcon sx={{ fontSize: 20, color: '#007AFF' }} />
           <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
-            CPU
+            {text.title}
           </Typography>
         </Box>
 
@@ -145,7 +151,7 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) 
           sx={{ pointerEvents: 'none', p: 1.5, background: 'rgba(255,255,255,0.05)', borderRadius: 2 }}
         >
           <Typography variant="body2" color="text.secondary">
-            Average Usage
+            {text.averageUsage}
           </Typography>
           <Typography variant="h5" sx={{ color, fontWeight: 700, letterSpacing: -0.3 }}>
             {avgUsage.toFixed(1)}%
@@ -165,6 +171,7 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) 
               coreIndex={index}
               usageHistory={history}
               currentUsage={validUsage[index] || 0}
+              locale={locale}
             />
           ))}
         </Box>
@@ -172,10 +179,10 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage }) 
         {/* 核心数统计 */}
         <Box display="flex" gap={2} mt={2} sx={{ pointerEvents: 'none' }}>
           <Typography variant="caption" color="text.secondary">
-            Physical: {cpu.physicalCores}
+            {text.physical}: {cpu.physicalCores}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Logical: {cpu.logicalCores}
+            {text.logical}: {cpu.logicalCores}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {cpu.vendor}

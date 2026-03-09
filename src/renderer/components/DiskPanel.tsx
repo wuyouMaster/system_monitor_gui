@@ -13,8 +13,10 @@ import {
   TableRow,
 } from '@mui/material';
 import { Storage as DiskIcon } from '@mui/icons-material';
+import { i18n, type Locale } from '../i18n';
 
 interface DiskPanelProps {
+  locale: Locale;
   disks: {
     device: string;
     mountPoint: string;
@@ -26,7 +28,8 @@ interface DiskPanelProps {
   }[];
 }
 
-export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks }) => {
+export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks, locale }) => {
+  const text = i18n[locale].disk;
   const formatBytes = (bytes: number) => {
     const gb = bytes / 1024 / 1024 / 1024;
     if (gb >= 1000) return `${(gb / 1024).toFixed(2)} TB`;
@@ -45,7 +48,7 @@ export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks }) => {
         <Box display="flex" alignItems="center" mb={2.5} gap={1}>
           <DiskIcon sx={{ fontSize: 20, color: '#007AFF' }} />
           <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
-            Disk
+            {text.title}
           </Typography>
         </Box>
 
@@ -55,25 +58,25 @@ export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks }) => {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}>
-                  Mount
+                  {text.mount}
                 </TableCell>
                 <TableCell
                   sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
                   align="right"
                 >
-                  Used
+                  {text.used}
                 </TableCell>
                 <TableCell
                   sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
                   align="right"
                 >
-                  Total
+                  {text.total}
                 </TableCell>
                 <TableCell
                   sx={{ color: 'rgba(235,235,245,0.6)', fontWeight: 500, fontSize: 12 }}
                   align="right"
                 >
-                  Usage
+                  {text.usage}
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -135,7 +138,7 @@ export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks }) => {
         {disks.length === 0 && (
           <Box textAlign="center" py={4}>
             <Typography variant="body2" color="text.secondary">
-              No disk information available
+              {text.noDiskInfo}
             </Typography>
           </Box>
         )}

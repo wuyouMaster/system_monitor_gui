@@ -10,8 +10,10 @@ import {
   InputAdornment,
 } from '@mui/material';
 import { Router as SocketIcon, Search as SearchIcon } from '@mui/icons-material';
+import { i18n, type Locale } from '../i18n';
 
 interface SocketPanelProps {
+  locale: Locale;
   socketSummary: {
     total: number;
     established: number;
@@ -71,7 +73,8 @@ const StatBox = ({
 );
 
 export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
-  ({ socketSummary, connections }) => {
+  ({ socketSummary, connections, locale }) => {
+    const text = i18n[locale].socket;
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedState, setSelectedState] = useState('all');
 
@@ -116,25 +119,25 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
           >
             <SocketIcon sx={{ fontSize: 20, color: '#007AFF' }} />
             <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
-              Network
+              {text.title}
             </Typography>
           </Box>
 
           <Grid container spacing={1.5} mb={2.5}>
             <Grid item xs={4}>
-              <StatBox label="Total" value={socketSummary.total} color="#5AC8FA" />
+              <StatBox label={text.total} value={socketSummary.total} color="#5AC8FA" />
             </Grid>
             <Grid item xs={4}>
-              <StatBox label="Established" value={socketSummary.established} color="#34C759" />
+              <StatBox label={text.established} value={socketSummary.established} color="#34C759" />
             </Grid>
             <Grid item xs={4}>
-              <StatBox label="Listening" value={socketSummary.listen} color="#5856D6" />
+              <StatBox label={text.listening} value={socketSummary.listen} color="#5856D6" />
             </Grid>
             <Grid item xs={6}>
-              <StatBox label="Time Wait" value={socketSummary.timeWait} color="#FF9500" />
+              <StatBox label={text.timeWait} value={socketSummary.timeWait} color="#FF9500" />
             </Grid>
             <Grid item xs={6}>
-              <StatBox label="Close Wait" value={socketSummary.closeWait} color="#FF3B30" />
+              <StatBox label={text.closeWait} value={socketSummary.closeWait} color="#FF3B30" />
             </Grid>
           </Grid>
 
@@ -148,14 +151,14 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
               pointerEvents: 'none',
             }}
           >
-            Recent Connections
+            {text.recentConnections}
           </Typography>
 
           <Box display="flex" gap={1.5} mb={1.5}>
             <TextField
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by IP or port"
+              placeholder={text.searchPlaceholder}
               size="small"
               fullWidth
               InputProps={{
@@ -173,7 +176,7 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
               onChange={(event) => setSelectedState(event.target.value)}
               sx={{ minWidth: 140 }}
             >
-              <MenuItem value="all">All status</MenuItem>
+              <MenuItem value="all">{text.allStatus}</MenuItem>
               {stateOptions.map((state) => (
                 <MenuItem key={state} value={state}>
                   {state}
@@ -222,19 +225,19 @@ export const SocketPanel: React.FC<SocketPanelProps> = React.memo(
                     variant="caption"
                     sx={{ color: 'rgba(235,235,245,0.3)', fontSize: 9 }}
                   >
-                    PID {conn.pid}
+                    {text.pid} {conn.pid}
                   </Typography>
                 </Box>
               </Box>
             ))}
             {connections.length === 0 && (
               <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-                No connections
+                {text.noConnections}
               </Typography>
             )}
             {connections.length > 0 && filteredConnections.length === 0 && (
               <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-                No matching connections
+                {text.noMatchingConnections}
               </Typography>
             )}
           </Box>

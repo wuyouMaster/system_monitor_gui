@@ -1,8 +1,10 @@
 import React from 'react';
 import { Card, CardContent, Typography, Box, LinearProgress, Grid } from '@mui/material';
 import { Memory as MemoryIcon } from '@mui/icons-material';
+import { i18n, type Locale } from '../i18n';
 
 interface MemoryInfoProps {
+  locale: Locale;
   memory: {
     total: number;
     available: number;
@@ -19,7 +21,8 @@ const STAT_BOX = {
   border: '1px solid rgba(255,255,255,0.07)',
 };
 
-export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) => {
+export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory, locale }) => {
+  const text = i18n[locale].memory;
   const formatBytes = (bytes: number) => {
     const gb = bytes / 1024 / 1024 / 1024;
     return `${gb.toFixed(2)} GB`;
@@ -39,14 +42,14 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) =>
         <Box display="flex" alignItems="center" mb={2.5} gap={1}>
           <MemoryIcon sx={{ fontSize: 20, color: '#007AFF' }} />
           <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: -0.3 }}>
-            Memory
+            {text.title}
           </Typography>
         </Box>
 
         <Box mb={2.5}>
           <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={1}>
             <Typography variant="body2" color="text.secondary">
-              Usage
+              {text.usage}
             </Typography>
             <Typography variant="h4" sx={{ color, fontWeight: 700, letterSpacing: -0.5 }}>
               {memory.usagePercent.toFixed(1)}%
@@ -67,7 +70,7 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) =>
           <Grid item xs={6}>
             <Box sx={STAT_BOX}>
               <Typography variant="caption" color="text.secondary">
-                Total
+                {text.total}
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.25 }}>
                 {formatBytes(memory.total)}
@@ -77,7 +80,7 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) =>
           <Grid item xs={6}>
             <Box sx={STAT_BOX}>
               <Typography variant="caption" color="text.secondary">
-                Available
+                {text.available}
               </Typography>
               <Typography variant="body1" sx={{ color: '#34C759', fontWeight: 600, mt: 0.25 }}>
                 {formatBytes(memory.available)}
@@ -87,7 +90,7 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) =>
           <Grid item xs={6}>
             <Box sx={STAT_BOX}>
               <Typography variant="caption" color="text.secondary">
-                Used
+                {text.used}
               </Typography>
               <Typography variant="body1" sx={{ color: '#FF9500', fontWeight: 600, mt: 0.25 }}>
                 {formatBytes(memory.used)}
@@ -97,7 +100,7 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory }) =>
           <Grid item xs={6}>
             <Box sx={STAT_BOX}>
               <Typography variant="caption" color="text.secondary">
-                Free
+                {text.free}
               </Typography>
               <Typography variant="body1" sx={{ color: '#007AFF', fontWeight: 600, mt: 0.25 }}>
                 {formatBytes(memory.free)}

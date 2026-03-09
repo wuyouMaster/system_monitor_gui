@@ -1,5 +1,15 @@
 import React, { startTransition, useEffect, useRef, useState } from 'react';
-import { Box, Typography, CircularProgress, Tabs, Tab, Chip } from '@mui/material';
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Tabs,
+  Tab,
+  Chip,
+  FormControl,
+  MenuItem,
+  Select,
+} from '@mui/material';
 import {
   Memory as MemoryIcon,
   DeveloperBoard as CpuIcon,
@@ -12,6 +22,7 @@ import { CpuPanel } from './CpuPanel';
 import { DiskPanel } from './DiskPanel';
 import { SocketPanel } from './SocketPanel';
 import { ProcessPanel } from './ProcessPanel';
+import { i18n, type Locale } from '../i18n';
 
 // ---------------------------------------------------------------------------
 // Independent state slices — each panel owns its own state so a push event
@@ -28,6 +39,9 @@ const EMPTY_ARR: never[] = [];
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
+  const [locale, setLocale] = useState<Locale>(() =>
+    navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en',
+  );
   const [memory,        setMemory]        = useState<any>(EMPTY_MEMORY);
   const [cpu,           setCpu]           = useState<any>(EMPTY_CPU);
   const [cpuUsage,      setCpuUsage]      = useState<number[]>(EMPTY_ARR);
@@ -42,37 +56,38 @@ export const Dashboard: React.FC = () => {
     cpuUsage.length > 0
       ? cpuUsage.filter(Number.isFinite).reduce((a, b) => a + b, 0) / cpuUsage.length
       : 0;
+  const text = i18n[locale];
 
   const tabItems = [
     {
       key: 'memory',
-      label: 'Memory',
+      label: text.dashboard.tabMemory,
       icon: <MemoryIcon sx={{ fontSize: 18, color: '#5AC8FA' }} />,
       value: `${(memory?.usagePercent ?? 0).toFixed(1)}%`,
     },
     {
       key: 'cpu',
-      label: 'CPU',
+      label: text.dashboard.tabCpu,
       icon: <CpuIcon sx={{ fontSize: 18, color: '#FF9500' }} />,
       value: `${avgCpuUsage.toFixed(1)}%`,
     },
     {
       key: 'socket',
-      label: 'Socket',
+      label: text.dashboard.tabSocket,
       icon: <SocketIcon sx={{ fontSize: 18, color: '#34C759' }} />,
-      value: `${socketSummary?.established ?? 0} est.`,
+      value: `${socketSummary?.established ?? 0} ${text.dashboard.tabEstablishedShort}`,
     },
     {
       key: 'disk',
-      label: 'Disk',
+      label: text.dashboard.tabDisk,
       icon: <DiskIcon sx={{ fontSize: 18, color: '#5856D6' }} />,
-      value: `${disks.length} mounts`,
+      value: `${disks.length} ${text.dashboard.tabMounts}`,
     },
     {
       key: 'process',
-      label: 'Processes',
+      label: text.dashboard.tabProcess,
       icon: <ProcessIcon sx={{ fontSize: 18, color: '#FF2D55' }} />,
-      value: `${processCount} total`,
+      value: `${processCount} ${text.dashboard.tabTotal}`,
     },
   ];
 
@@ -153,7 +168,7 @@ export const Dashboard: React.FC = () => {
             variant="body2"
             sx={{ mt: 2, color: 'rgba(235,235,245,0.6)', fontWeight: 400 }}
           >
-            Loading system info…
+            {text.dashboard.loading}
           </Typography>
         </Box>
       </Box>
@@ -181,13 +196,26 @@ export const Dashboard: React.FC = () => {
     >
       <Box sx={{ p: 3, maxWidth: 1600, mx: 'auto' }}>
         {/* Header */}
-        <Box mb={4} pt={1} sx={{ pointerEvents: 'none' }}>
-          <Typography variant="h4" sx={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: -0.5 }}>
-            System Monitor
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Real-time resource monitoring
-          </Typography>
+        <Box mb={4} pt={1} display="flex" flexDirection="column" alignItems="flex-start" gap={1.25}>
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <Select
+              value={locale}
+              onChange={(event) => setLocale(event.target.value as Locale)}
+              displayEmpty
+              sx={{ fontSize: 13, height: 34 }}
+            >
+              <MenuItem value="en">{text.dashboard.language}: English</MenuItem>
+              <MenuItem value="zh">{text.dashboard.language}: 中文</MenuItem>
+            </Select>
+          </FormControl>
+          <Box sx={{ pointerEvents: 'none' }}>
+            <Typography variant="h4" sx={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: -0.5 }}>
+              {text.dashboard.appTitle}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {text.dashboard.subtitle}
+            </Typography>
+          </Box>
         </Box>
 
         {/* Left tabs + right single-panel content */}
@@ -210,7 +238,7 @@ export const Dashboard: React.FC = () => {
               variant="caption"
               sx={{ display: 'block', px: 1.2, pb: 1, color: 'rgba(235,235,245,0.5)', letterSpacing: 0.3 }}
             >
-              PANELS
+              {text.dashboard.panels}
             </Typography>
             <Tabs
               orientation="vertical"
@@ -288,11 +316,15 @@ export const Dashboard: React.FC = () => {
 
           <Box sx={{ minHeight: 'calc(100vh - 240px)', display: 'flex' }}>
             <Box sx={{ flex: 1 }}>
-              {activeTab === 0 && <MemoryPanel memory={memory} />}
-              {activeTab === 1 && <CpuPanel cpu={cpu} cpuUsage={cpuUsage} />}
-              {activeTab === 2 && <SocketPanel socketSummary={socketSummary} connections={connections} />}
-              {activeTab === 3 && <DiskPanel disks={disks} />}
-              {activeTab === 4 && <ProcessPanel processes={processes} processCount={processCount} />}
+              {activeTab === 0 && <MemoryPanel memory={memory} locale={locale} />}
+              {activeTab === 1 && <CpuPanel cpu={cpu} cpuUsage={cpuUsage} locale={locale} />}
+              {activeTab === 2 && (
+                <SocketPanel socketSummary={socketSummary} connections={connections} locale={locale} />
+              )}
+              {activeTab === 3 && <DiskPanel disks={disks} locale={locale} />}
+              {activeTab === 4 && (
+                <ProcessPanel processes={processes} processCount={processCount} locale={locale} />
+              )}
             </Box>
           </Box>
         </Box>
@@ -300,7 +332,7 @@ export const Dashboard: React.FC = () => {
         {/* Footer */}
         <Box mt={3} textAlign="center" sx={{ pointerEvents: 'none' }}>
           <Typography variant="caption" sx={{ color: 'rgba(235,235,245,0.3)' }}>
-            Powered by Rust · Electron · React · CPU sampled every 1.5s
+            {text.dashboard.footer}
           </Typography>
         </Box>
       </Box>
