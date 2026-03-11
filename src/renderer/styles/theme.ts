@@ -49,8 +49,7 @@ export const techTheme = {
     MuiCard: {
       styleOverrides: {
         root: {
-          background: '#1C1C1E',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%)',
           boxShadow: '0 1px 8px rgba(0,0,0,0.4)',
           borderRadius: 16,
           contain: 'content',

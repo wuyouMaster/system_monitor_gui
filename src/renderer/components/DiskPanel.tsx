@@ -43,7 +43,7 @@ export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks, locale }
   };
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ height: '100%', border: 'none' }}>
       <CardContent>
         <Box display="flex" alignItems="center" mb={2.5} gap={1}>
           <DiskIcon sx={{ fontSize: 20, color: '#007AFF' }} />

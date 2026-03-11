@@ -228,7 +228,6 @@ export const Dashboard: React.FC = () => {
           <Box
             sx={{
               background: 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%)',
-              border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 3,
               p: 1.2,
               backdropFilter: 'blur(8px)',

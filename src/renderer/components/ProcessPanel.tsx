@@ -221,7 +221,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
     });
 
     return (
-      <Card sx={{ height: '100%' }}>
+      <Card sx={{ height: '100%', border: 'none' }}>
         <CardContent
           sx={{
             height: '100%',

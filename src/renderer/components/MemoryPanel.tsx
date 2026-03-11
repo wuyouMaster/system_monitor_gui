@@ -37,7 +37,7 @@ export const MemoryPanel: React.FC<MemoryInfoProps> = React.memo(({ memory, loca
   const color = getUsageColor(memory.usagePercent);
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ height: '100%', border: 'none' }}>
       <CardContent>
         <Box display="flex" alignItems="center" mb={2.5} gap={1}>
           <MemoryIcon sx={{ fontSize: 20, color: '#007AFF' }} />

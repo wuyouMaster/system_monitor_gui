@@ -43,7 +43,7 @@ const CpuCoreCard: React.FC<CpuCoreCardProps> = React.memo(
   const color = getUsageColor(currentUsage);
 
   return (
-    <Card sx={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+    <Card sx={{ background: 'rgba(255,255,255,0.03)' }}>
       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
           <Typography variant="caption" sx={{ color: 'rgba(235,235,245,0.5)', fontWeight: 500 }}>
@@ -129,7 +129,7 @@ export const CpuPanel: React.FC<CpuPanelProps> = React.memo(({ cpu, cpuUsage, lo
   const color = getUsageColor(avgUsage);
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ height: '100%', border: 'none' }}>
       <CardContent>
         <Box display="flex" alignItems="center" mb={2} gap={1} sx={{ pointerEvents: 'none' }}>
           <CpuIcon sx={{ fontSize: 20, color: '#007AFF' }} />
