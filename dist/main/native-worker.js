@@ -70,16 +70,39 @@ function startChildTracking(pid) {
       ],
       targetPid: trackedPid
     });
-    childTracker = startFn(pid, (event) => {
+    childTracker = startFn(pid, (...args) => {
       const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+      const payload = args.length > 1 ? args[1] ?? args[0] : args[0];
+      const event = (payload == null ? void 0 : payload.value) ?? payload;
+      if (!event) return;
       eventCounter++;
-      const safeName = (event == null ? void 0 : event.name) ? String(event.name) : "Unknown";
-      const safePid = Number.isFinite(event == null ? void 0 : event.pid) ? event.pid : 0;
+      const rawPid = typeof (event == null ? void 0 : event.pid) === "number" ? event.pid : Number(event == null ? void 0 : event.pid);
+      const safePid = Number.isFinite(rawPid) ? rawPid : 0;
+      const cmdline = Array.isArray(event == null ? void 0 : event.cmdline) ? event.cmdline : Array.isArray(event == null ? void 0 : event.cmdLine) ? event.cmdLine : typeof (event == null ? void 0 : event.cmdline) === "string" ? event.cmdline.split(" ") : [];
+      const exePath = (event == null ? void 0 : event.exe_path) || (event == null ? void 0 : event.exePath) || "";
+      let command = cmdline.length > 0 ? cmdline.join(" ") : exePath;
+      let safeName = (event == null ? void 0 : event.name) ? String(event.name) : "";
+      if (safePid > 0 && (!safeName || !command)) {
+        const getProc = sysInfoModule.getProcessByPid || sysInfoModule.get_process_by_pid;
+        if (typeof getProc === "function") {
+          try {
+            const proc = getProc(safePid);
+            if (proc) {
+              safeName = safeName || proc.name || "";
+              command = command || proc.command || "";
+            }
+          } catch (e) {
+            console.warn("worker getProcessByPid error:", e);
+          }
+        }
+      }
+      if (!safeName) safeName = command || "Unknown";
       const traceEvent = {
         id: `evt_${String(eventCounter).padStart(3, "0")}`,
         timestamp,
         process: safeName,
         pid: safePid,
+        command: command || void 0,
         type: "spawn",
         summary: "Child process spawned",
         severity: "medium",

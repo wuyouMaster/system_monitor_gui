@@ -289,6 +289,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {event.process} · {event.pid} · {event.timestamp}
+                          {event.command ? ` · ${event.command}` : ''}
                         </Typography>
                       </Box>
                     </Box>
