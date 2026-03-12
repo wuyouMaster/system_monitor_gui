@@ -48,6 +48,11 @@ function startChildTracking(pid) {
     return;
   }
   try {
+    emit("data:trace", {
+      events: [],
+      reset: true,
+      targetPid: trackedPid
+    });
     eventCounter++;
     emit("data:trace", {
       events: [
@@ -86,11 +91,6 @@ function startChildTracking(pid) {
         targetPid: trackedPid
       });
     });
-    emit("data:trace", {
-      events: [],
-      reset: true,
-      targetPid: trackedPid
-    });
   } catch (e) {
     console.error("worker start tracking error:", e);
     eventCounter++;
@@ -126,7 +126,6 @@ function stopChildTracking() {
   missingTargetReported = false;
   emit("data:trace", {
     events: [],
-    reset: true,
     targetPid: null
   });
 }
