@@ -26,15 +26,55 @@ function startChildTracking(pid) {
   eventCounter = 0;
   previousTrackedProcess = null;
   missingTargetReported = false;
+  const startFn = sysInfoModule.startTrackingChildren || sysInfoModule.start_tracking_children;
+  if (typeof startFn !== "function") {
+    eventCounter++;
+    emit("data:trace", {
+      events: [
+        {
+          id: `evt_${String(eventCounter).padStart(3, "0")}`,
+          timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false }),
+          process: "System",
+          pid,
+          type: "spawn",
+          summary: "Tracking API unavailable",
+          severity: "high",
+          delta: "0",
+          durationMs: 0
+        }
+      ],
+      targetPid: trackedPid
+    });
+    return;
+  }
   try {
-    childTracker = sysInfoModule.startTrackingChildren(pid, (event) => {
+    eventCounter++;
+    emit("data:trace", {
+      events: [
+        {
+          id: `evt_${String(eventCounter).padStart(3, "0")}`,
+          timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false }),
+          process: "System",
+          pid,
+          type: "spawn",
+          summary: "Tracking started",
+          severity: "low",
+          delta: "0",
+          durationMs: 0
+        }
+      ],
+      targetPid: trackedPid
+    });
+    childTracker = startFn(pid, (event) => {
       const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
       eventCounter++;
+      const safeName = (event == null ? void 0 : event.name) ? String(event.name) : "Unknown";
+      const safePid = Number.isFinite(event == null ? void 0 : event.pid) ? event.pid : 0;
       const traceEvent = {
         id: `evt_${String(eventCounter).padStart(3, "0")}`,
         timestamp,
-        process: event.name || "Unknown",
-        pid: event.pid || 0,
+        process: safeName,
+        pid: safePid,
         type: "spawn",
         summary: "Child process spawned",
         severity: "medium",
@@ -53,6 +93,23 @@ function startChildTracking(pid) {
     });
   } catch (e) {
     console.error("worker start tracking error:", e);
+    eventCounter++;
+    emit("data:trace", {
+      events: [
+        {
+          id: `evt_${String(eventCounter).padStart(3, "0")}`,
+          timestamp: (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false }),
+          process: "System",
+          pid,
+          type: "spawn",
+          summary: "Tracking failed to start",
+          severity: "high",
+          delta: "0",
+          durationMs: 0
+        }
+      ],
+      targetPid: trackedPid
+    });
   }
 }
 function stopChildTracking() {

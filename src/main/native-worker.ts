@@ -55,15 +55,57 @@ function startChildTracking(pid: number) {
   missingTargetReported = false;
   
 
+  const startFn = sysInfoModule.startTrackingChildren || sysInfoModule.start_tracking_children;
+  if (typeof startFn !== 'function') {
+    eventCounter++;
+    emit('data:trace', {
+      events: [
+        {
+          id: `evt_${String(eventCounter).padStart(3, '0')}`,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          process: 'System',
+          pid,
+          type: 'spawn',
+          summary: 'Tracking API unavailable',
+          severity: 'high',
+          delta: '0',
+          durationMs: 0,
+        },
+      ],
+      targetPid: trackedPid,
+    });
+    return;
+  }
+
   try {
-    childTracker = sysInfoModule.startTrackingChildren(pid, (event: any) => {
+    eventCounter++;
+    emit('data:trace', {
+      events: [
+        {
+          id: `evt_${String(eventCounter).padStart(3, '0')}`,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          process: 'System',
+          pid,
+          type: 'spawn',
+          summary: 'Tracking started',
+          severity: 'low',
+          delta: '0',
+          durationMs: 0,
+        },
+      ],
+      targetPid: trackedPid,
+    });
+
+    childTracker = startFn(pid, (event: any) => {
       const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
       eventCounter++;
+      const safeName = event?.name ? String(event.name) : 'Unknown';
+      const safePid = Number.isFinite(event?.pid) ? event.pid : 0;
       const traceEvent: TraceEvent = {
         id: `evt_${String(eventCounter).padStart(3, '0')}`,
         timestamp,
-        process: event.name || 'Unknown',
-        pid: event.pid || 0,
+        process: safeName,
+        pid: safePid,
         type: 'spawn',
         summary: 'Child process spawned',
         severity: 'medium',
@@ -84,6 +126,23 @@ function startChildTracking(pid: number) {
     });
   } catch (e) {
     console.error('worker start tracking error:', e);
+    eventCounter++;
+    emit('data:trace', {
+      events: [
+        {
+          id: `evt_${String(eventCounter).padStart(3, '0')}`,
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+          process: 'System',
+          pid,
+          type: 'spawn',
+          summary: 'Tracking failed to start',
+          severity: 'high',
+          delta: '0',
+          durationMs: 0,
+        },
+      ],
+      targetPid: trackedPid,
+    });
   }
 }
 
