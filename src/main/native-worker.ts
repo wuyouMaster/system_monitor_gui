@@ -3,7 +3,7 @@ import path from 'path';
 import { parentPort } from 'worker_threads';
 
 type PushMessage = {
-  channel: 'data:fast' | 'data:slow' | 'data:processes';
+  channel: 'data:fast' | 'data:slow' | 'data:processes' | 'data:trace';
   payload: unknown;
 };
 
@@ -14,6 +14,97 @@ let procTimer: ReturnType<typeof setInterval> | null = null;
 
 const CPU_SAMPLE_SECS = 500;
 
+interface TraceEvent {
+  id: string;
+  timestamp: string;
+  process: string;
+  pid: number;
+  type: 'cpu' | 'memory' | 'io' | 'network' | 'spawn';
+  summary: string;
+  severity: 'low' | 'medium' | 'high';
+  delta: string;
+  durationMs: number;
+}
+
+interface ProcessSnapshot {
+  pid: number;
+  name: string;
+  memoryUsage: number;
+}
+
+let eventCounter = 0;
+let childTracker: any = null;
+let trackedPid: number | null = null;
+let previousTrackedProcess: ProcessSnapshot | null = null;
+let missingTargetReported = false;
+
+
+function startChildTracking(pid: number) {
+  if (!sysInfoModule) return;
+  if (childTracker) {
+    try {
+      childTracker.stop();
+    } catch (e) {
+      console.warn('worker stop tracker error:', e);
+    }
+  }
+
+  trackedPid = pid;
+  eventCounter = 0;
+  previousTrackedProcess = null;
+  missingTargetReported = false;
+  
+
+  try {
+    childTracker = sysInfoModule.startTrackingChildren(pid, (event: any) => {
+      const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+      eventCounter++;
+      const traceEvent: TraceEvent = {
+        id: `evt_${String(eventCounter).padStart(3, '0')}`,
+        timestamp,
+        process: event.name || 'Unknown',
+        pid: event.pid || 0,
+        type: 'spawn',
+        summary: 'Child process spawned',
+        severity: 'medium',
+        delta: '+1 child',
+        durationMs: Math.floor(Math.random() * 200) + 80,
+      };
+
+      emit('data:trace', {
+        events: [traceEvent],
+        targetPid: trackedPid,
+      });
+    });
+
+    emit('data:trace', {
+      events: [],
+      reset: true,
+      targetPid: trackedPid,
+    });
+  } catch (e) {
+    console.error('worker start tracking error:', e);
+  }
+}
+
+function stopChildTracking() {
+  if (childTracker) {
+    try {
+      childTracker.stop();
+    } catch (e) {
+      console.warn('worker stop tracker error:', e);
+    }
+  }
+  childTracker = null;
+  trackedPid = null;
+  previousTrackedProcess = null;
+  missingTargetReported = false;
+  emit('data:trace', {
+    events: [],
+    reset: true,
+    targetPid: null,
+  });
+}
 function getNativeModuleName(): string {
   const platformMap: Record<string, string> = { darwin: 'darwin', linux: 'linux', win32: 'win32' };
   const archMap: Record<string, string> = { x64: 'x64', arm64: 'arm64', ia32: 'ia32' };
@@ -93,6 +184,73 @@ function pushProcesses() {
       processes,
       processCount: processes.length,
     });
+
+    if (trackedPid !== null) {
+      const target = processes.find((p: any) => p.pid === trackedPid);
+      if (!target) {
+        if (!missingTargetReported) {
+          missingTargetReported = true;
+          eventCounter++;
+          const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+          emit('data:trace', {
+            events: [
+              {
+                id: `evt_${String(eventCounter).padStart(3, '0')}`,
+                timestamp,
+                process: 'Unknown',
+                pid: trackedPid,
+                type: 'spawn',
+                summary: 'Target process not found',
+                severity: 'high',
+                delta: '0',
+                durationMs: 0,
+              },
+            ],
+            targetPid: trackedPid,
+          });
+        }
+      } else {
+        missingTargetReported = false;
+        const snapshot: ProcessSnapshot = {
+          pid: target.pid,
+          name: target.name,
+          memoryUsage: target.memoryUsage,
+        };
+
+        if (previousTrackedProcess) {
+          const memoryDelta = snapshot.memoryUsage - previousTrackedProcess.memoryUsage;
+          const memoryDeltaPercent = previousTrackedProcess.memoryUsage > 0
+            ? (memoryDelta / previousTrackedProcess.memoryUsage) * 100
+            : 0;
+          if (Math.abs(memoryDeltaPercent) >= 20) {
+            eventCounter++;
+            const severity: TraceEvent['severity'] = Math.abs(memoryDeltaPercent) > 50
+              ? 'high'
+              : 'medium';
+            const deltaMB = (memoryDelta / (1024 * 1024)).toFixed(1);
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            emit('data:trace', {
+              events: [
+                {
+                  id: `evt_${String(eventCounter).padStart(3, '0')}`,
+                  timestamp,
+                  process: snapshot.name,
+                  pid: snapshot.pid,
+                  type: 'memory',
+                  summary: 'Target memory change',
+                  severity,
+                  delta: `${parseFloat(deltaMB) >= 0 ? '+' : ''}${deltaMB} MB`,
+                  durationMs: Math.floor(Math.random() * 500) + 200,
+                },
+              ],
+              targetPid: trackedPid,
+            });
+          }
+        }
+
+        previousTrackedProcess = snapshot;
+      }
+    }
   } catch (e) {
     console.error('worker pushProcesses error:', e);
   }
@@ -121,12 +279,22 @@ function stopDataTimers() {
   procTimer = null;
 }
 
-parentPort?.on('message', (msg: { type: 'start' | 'stop' }) => {
+parentPort?.on('message', (msg: { type: 'start' | 'stop' | 'trace:start' | 'trace:stop'; pid?: number }) => {
   if (msg.type === 'start') {
     if (loadNativeModule()) startDataTimers();
     return;
   }
   if (msg.type === 'stop') {
     stopDataTimers();
+    stopChildTracking();
+  }
+  if (msg.type === 'trace:start') {
+    if (typeof msg.pid === 'number' && Number.isFinite(msg.pid)) {
+      startChildTracking(msg.pid);
+    }
+    return;
+  }
+  if (msg.type === 'trace:stop') {
+    stopChildTracking();
   }
 });

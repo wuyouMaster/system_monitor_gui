@@ -106,6 +106,14 @@ electron.ipcMain.handle("get-disks", async () => sysInfoModule == null ? void 0 
 electron.ipcMain.handle("get-socket-summary", async () => sysInfoModule == null ? void 0 : sysInfoModule.jsGetSocketSummary());
 electron.ipcMain.handle("get-processes", async () => sysInfoModule == null ? void 0 : sysInfoModule.getProcesses());
 electron.ipcMain.handle("get-connections", async () => sysInfoModule == null ? void 0 : sysInfoModule.getConnections());
+electron.ipcMain.on("trace:start", (_, payload) => {
+  if (!nativeWorker) return;
+  nativeWorker.postMessage({ type: "trace:start", pid: payload.pid });
+});
+electron.ipcMain.on("trace:stop", () => {
+  if (!nativeWorker) return;
+  nativeWorker.postMessage({ type: "trace:stop" });
+});
 electron.app.whenReady().then(() => {
   createWindow();
   electron.app.on("activate", () => {

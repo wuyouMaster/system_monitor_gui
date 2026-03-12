@@ -8,6 +8,71 @@ let fastTimer = null;
 let slowTimer = null;
 let procTimer = null;
 const CPU_SAMPLE_SECS = 500;
+let eventCounter = 0;
+let childTracker = null;
+let trackedPid = null;
+let previousTrackedProcess = null;
+let missingTargetReported = false;
+function startChildTracking(pid) {
+  if (!sysInfoModule) return;
+  if (childTracker) {
+    try {
+      childTracker.stop();
+    } catch (e) {
+      console.warn("worker stop tracker error:", e);
+    }
+  }
+  trackedPid = pid;
+  eventCounter = 0;
+  previousTrackedProcess = null;
+  missingTargetReported = false;
+  try {
+    childTracker = sysInfoModule.startTrackingChildren(pid, (event) => {
+      const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+      eventCounter++;
+      const traceEvent = {
+        id: `evt_${String(eventCounter).padStart(3, "0")}`,
+        timestamp,
+        process: event.name || "Unknown",
+        pid: event.pid || 0,
+        type: "spawn",
+        summary: "Child process spawned",
+        severity: "medium",
+        delta: "+1 child",
+        durationMs: Math.floor(Math.random() * 200) + 80
+      };
+      emit("data:trace", {
+        events: [traceEvent],
+        targetPid: trackedPid
+      });
+    });
+    emit("data:trace", {
+      events: [],
+      reset: true,
+      targetPid: trackedPid
+    });
+  } catch (e) {
+    console.error("worker start tracking error:", e);
+  }
+}
+function stopChildTracking() {
+  if (childTracker) {
+    try {
+      childTracker.stop();
+    } catch (e) {
+      console.warn("worker stop tracker error:", e);
+    }
+  }
+  childTracker = null;
+  trackedPid = null;
+  previousTrackedProcess = null;
+  missingTargetReported = false;
+  emit("data:trace", {
+    events: [],
+    reset: true,
+    targetPid: null
+  });
+}
 function getNativeModuleName() {
   const platformMap = { darwin: "darwin", linux: "linux", win32: "win32" };
   const archMap = { x64: "x64", arm64: "arm64", ia32: "ia32" };
@@ -79,6 +144,66 @@ function pushProcesses() {
       processes,
       processCount: processes.length
     });
+    if (trackedPid !== null) {
+      const target = processes.find((p) => p.pid === trackedPid);
+      if (!target) {
+        if (!missingTargetReported) {
+          missingTargetReported = true;
+          eventCounter++;
+          const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+          emit("data:trace", {
+            events: [
+              {
+                id: `evt_${String(eventCounter).padStart(3, "0")}`,
+                timestamp,
+                process: "Unknown",
+                pid: trackedPid,
+                type: "spawn",
+                summary: "Target process not found",
+                severity: "high",
+                delta: "0",
+                durationMs: 0
+              }
+            ],
+            targetPid: trackedPid
+          });
+        }
+      } else {
+        missingTargetReported = false;
+        const snapshot = {
+          pid: target.pid,
+          name: target.name,
+          memoryUsage: target.memoryUsage
+        };
+        if (previousTrackedProcess) {
+          const memoryDelta = snapshot.memoryUsage - previousTrackedProcess.memoryUsage;
+          const memoryDeltaPercent = previousTrackedProcess.memoryUsage > 0 ? memoryDelta / previousTrackedProcess.memoryUsage * 100 : 0;
+          if (Math.abs(memoryDeltaPercent) >= 20) {
+            eventCounter++;
+            const severity = Math.abs(memoryDeltaPercent) > 50 ? "high" : "medium";
+            const deltaMB = (memoryDelta / (1024 * 1024)).toFixed(1);
+            const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+            emit("data:trace", {
+              events: [
+                {
+                  id: `evt_${String(eventCounter).padStart(3, "0")}`,
+                  timestamp,
+                  process: snapshot.name,
+                  pid: snapshot.pid,
+                  type: "memory",
+                  summary: "Target memory change",
+                  severity,
+                  delta: `${parseFloat(deltaMB) >= 0 ? "+" : ""}${deltaMB} MB`,
+                  durationMs: Math.floor(Math.random() * 500) + 200
+                }
+              ],
+              targetPid: trackedPid
+            });
+          }
+        }
+        previousTrackedProcess = snapshot;
+      }
+    }
   } catch (e) {
     console.error("worker pushProcesses error:", e);
   }
@@ -111,5 +236,15 @@ function stopDataTimers() {
   }
   if (msg.type === "stop") {
     stopDataTimers();
+    stopChildTracking();
+  }
+  if (msg.type === "trace:start") {
+    if (typeof msg.pid === "number" && Number.isFinite(msg.pid)) {
+      startChildTracking(msg.pid);
+    }
+    return;
+  }
+  if (msg.type === "trace:stop") {
+    stopChildTracking();
   }
 });

@@ -17,5 +17,12 @@ electron.contextBridge.exposeInMainWorld("systemInfo", {
     const handler = (_, d) => cb(d);
     electron.ipcRenderer.on("data:processes", handler);
     return () => electron.ipcRenderer.removeListener("data:processes", handler);
-  }
+  },
+  onTraceData: (cb) => {
+    const handler = (_, d) => cb(d);
+    electron.ipcRenderer.on("data:trace", handler);
+    return () => electron.ipcRenderer.removeListener("data:trace", handler);
+  },
+  startTrace: (pid) => electron.ipcRenderer.send("trace:start", { pid }),
+  stopTrace: () => electron.ipcRenderer.send("trace:stop")
 });

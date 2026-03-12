@@ -1,22 +1,24 @@
 export type Locale = 'en' | 'zh';
 
 type I18nSchema = {
-  dashboard: {
-    appTitle: string;
-    subtitle: string;
-    loading: string;
-    panels: string;
-    footer: string;
-    language: string;
-    tabMemory: string;
-    tabCpu: string;
-    tabSocket: string;
-    tabDisk: string;
-    tabProcess: string;
-    tabEstablishedShort: string;
-    tabMounts: string;
-    tabTotal: string;
-  };
+    dashboard: {
+      appTitle: string;
+      subtitle: string;
+      loading: string;
+      panels: string;
+      footer: string;
+      language: string;
+      tabMemory: string;
+      tabCpu: string;
+      tabSocket: string;
+      tabDisk: string;
+      tabProcess: string;
+      tabTrace: string;
+      tabEstablishedShort: string;
+      tabMounts: string;
+      tabTotal: string;
+      tabEvents: string;
+    };
   memory: {
     title: string;
     usage: string;
@@ -65,6 +67,40 @@ type I18nSchema = {
     noProcessInfo: string;
     noMatchingProcesses: string;
   };
+  trace: {
+    title: string;
+    live: string;
+    events: string;
+    health: string;
+    alerts: string;
+    alertsHint: string;
+    latency: string;
+    searchPlaceholder: string;
+    typeLabels: {
+      all: string;
+      cpu: string;
+      memory: string;
+      io: string;
+      network: string;
+      spawn: string;
+    };
+    severityLabels: {
+      low: string;
+      medium: string;
+      high: string;
+    };
+    delta: string;
+    duration: string;
+    noEvents: string;
+    focusTitle: string;
+    focusProcess: string;
+    focusAuto: string;
+    controls: string;
+    start: string;
+    pause: string;
+    insights: string;
+    insightItems: { title: string; detail: string }[];
+  };
 };
 
 export const i18n: Record<Locale, I18nSchema> = {
@@ -81,9 +117,11 @@ export const i18n: Record<Locale, I18nSchema> = {
       tabSocket: 'Socket',
       tabDisk: 'Disk',
       tabProcess: 'Processes',
+      tabTrace: 'Process Trace',
       tabEstablishedShort: 'est.',
       tabMounts: 'mounts',
       tabTotal: 'total',
+      tabEvents: 'events',
     },
     memory: {
       title: 'Memory',
@@ -133,6 +171,44 @@ export const i18n: Record<Locale, I18nSchema> = {
       noProcessInfo: 'No process information available',
       noMatchingProcesses: 'No matching processes',
     },
+    trace: {
+      title: 'Process Trace',
+      live: 'Live',
+      events: 'events',
+      health: 'Trace health',
+      alerts: 'Alerts',
+      alertsHint: 'High severity in last 5 min',
+      latency: 'Ingest latency',
+      searchPlaceholder: 'Search process or event details',
+      typeLabels: {
+        all: 'All types',
+        cpu: 'CPU',
+        memory: 'Memory',
+        io: 'Disk I/O',
+        network: 'Network',
+        spawn: 'Spawn',
+      },
+      severityLabels: {
+        low: 'Low',
+        medium: 'Medium',
+        high: 'High',
+      },
+      delta: 'Delta',
+      duration: 'Duration',
+      noEvents: 'No trace events match your filters',
+      focusTitle: 'Focus target',
+      focusProcess: 'WindowServer spike',
+      focusAuto: 'Auto focus',
+      controls: 'Capture controls',
+      start: 'Start',
+      pause: 'Pause',
+      insights: 'Insights',
+      insightItems: [
+        { title: 'GPU bursts every 45s', detail: 'Likely tied to desktop animation cycles.' },
+        { title: 'Memory climb on Chrome', detail: 'Consider checking extension allocations.' },
+        { title: 'Network jitter stabilized', detail: 'Zoom uplink recovered after 3 spikes.' },
+      ],
+    },
   },
   zh: {
     dashboard: {
@@ -147,9 +223,11 @@ export const i18n: Record<Locale, I18nSchema> = {
       tabSocket: '网络',
       tabDisk: '磁盘',
       tabProcess: '进程',
+      tabTrace: '进程追踪',
       tabEstablishedShort: '已建立',
       tabMounts: '挂载点',
       tabTotal: '总计',
+      tabEvents: '事件',
     },
     memory: {
       title: '内存',
@@ -198,6 +276,44 @@ export const i18n: Record<Locale, I18nSchema> = {
       total: '总计',
       noProcessInfo: '暂无进程信息',
       noMatchingProcesses: '没有匹配的进程',
+    },
+    trace: {
+      title: '进程追踪',
+      live: '实时',
+      events: '事件',
+      health: '追踪健康度',
+      alerts: '告警',
+      alertsHint: '近 5 分钟高严重度',
+      latency: '采集延迟',
+      searchPlaceholder: '搜索进程或事件详情',
+      typeLabels: {
+        all: '全部类型',
+        cpu: 'CPU',
+        memory: '内存',
+        io: '磁盘 I/O',
+        network: '网络',
+        spawn: '创建进程',
+      },
+      severityLabels: {
+        low: '低',
+        medium: '中',
+        high: '高',
+      },
+      delta: '变化',
+      duration: '持续',
+      noEvents: '没有匹配的追踪事件',
+      focusTitle: '关注目标',
+      focusProcess: 'WindowServer 峰值',
+      focusAuto: '自动聚焦',
+      controls: '采集控制',
+      start: '开始',
+      pause: '暂停',
+      insights: '洞察',
+      insightItems: [
+        { title: 'GPU 峰值每 45 秒出现', detail: '可能与桌面动画周期有关。' },
+        { title: 'Chrome 内存持续上升', detail: '建议检查扩展占用情况。' },
+        { title: '网络抖动趋于稳定', detail: 'Zoom 上行在 3 次峰值后恢复。' },
+      ],
     },
   },
 };

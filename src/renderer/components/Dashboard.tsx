@@ -16,12 +16,14 @@ import {
   Router as SocketIcon,
   Storage as DiskIcon,
   ViewList as ProcessIcon,
+  Timeline as TraceIcon,
 } from '@mui/icons-material';
 import { MemoryPanel } from './MemoryPanel';
 import { CpuPanel } from './CpuPanel';
 import { DiskPanel } from './DiskPanel';
 import { SocketPanel } from './SocketPanel';
 import { ProcessPanel } from './ProcessPanel';
+import { ProcessTracePanel } from './ProcessTracePanel';
 import { i18n, type Locale } from '../i18n';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +52,7 @@ export const Dashboard: React.FC = () => {
   const [connections,   setConnections]   = useState<any[]>(EMPTY_ARR);
   const [processes,     setProcesses]     = useState<any[]>(EMPTY_ARR);
   const [processCount,  setProcessCount]  = useState(0);
+  const [traceEvents,   setTraceEvents]   = useState<number>(0);
   const [ready,         setReady]         = useState(false);
   const readyRef = useRef(false);
   const avgCpuUsage =
@@ -89,15 +92,20 @@ export const Dashboard: React.FC = () => {
       icon: <ProcessIcon sx={{ fontSize: 18, color: '#FF2D55' }} />,
       value: `${processCount} ${text.dashboard.tabTotal}`,
     },
+    {
+      key: 'trace',
+      label: text.dashboard.tabTrace,
+      icon: <TraceIcon sx={{ fontSize: 18, color: '#32D74B' }} />,
+      value: `${traceEvents} ${text.dashboard.tabEvents}`,
+    },
   ];
 
   useEffect(() => {
-    // Buffer IPC payloads and commit state on the next animation frame.
-    // This keeps input/scroll handling smooth under bursty native updates.
     const pendingRef: {
       fast?: { memory: any; cpu: any; cpuUsage: number[] };
       slow?: { disks: any[]; socketSummary: any; connections: any[] };
       proc?: { processes: any[]; processCount: number };
+      trace?: { events: any[] };
     } = {};
     const rafIdRef = { current: 0 };
     const scheduleFlush = () => {
@@ -107,9 +115,11 @@ export const Dashboard: React.FC = () => {
         const fast = pendingRef.fast;
         const slow = pendingRef.slow;
         const proc = pendingRef.proc;
+        const trace = pendingRef.trace;
         pendingRef.fast = undefined;
         pendingRef.slow = undefined;
         pendingRef.proc = undefined;
+        pendingRef.trace = undefined;
 
         startTransition(() => {
           if (fast) {
@@ -130,12 +140,13 @@ export const Dashboard: React.FC = () => {
             setProcesses(proc.processes);
             setProcessCount(proc.processCount);
           }
+          if (trace) {
+            setTraceEvents(trace.events.length);
+          }
         });
       });
     };
 
-    // Subscribe to main-process push events.
-    // Each unsub function is returned by the preload helper.
     const unsubFast = window.systemInfo.onFastData((d) => {
       pendingRef.fast = d;
       scheduleFlush();
@@ -151,10 +162,16 @@ export const Dashboard: React.FC = () => {
       scheduleFlush();
     });
 
+    const unsubTrace = window.systemInfo.onTraceData((d) => {
+      pendingRef.trace = d;
+      scheduleFlush();
+    });
+
     return () => {
       unsubFast();
       unsubSlow();
       unsubProc();
+      unsubTrace();
       if (rafIdRef.current) window.cancelAnimationFrame(rafIdRef.current);
     };
   }, []);
@@ -324,6 +341,7 @@ export const Dashboard: React.FC = () => {
               {activeTab === 4 && (
                 <ProcessPanel processes={processes} processCount={processCount} locale={locale} />
               )}
+              {activeTab === 5 && <ProcessTracePanel locale={locale} />}
             </Box>
           </Box>
         </Box>

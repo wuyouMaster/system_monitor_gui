@@ -73,6 +73,24 @@ export interface ProcessData {
   processCount: number;
 }
 
+export interface TraceData {
+  events: TraceEvent[];
+  reset?: boolean;
+  targetPid?: number | null;
+}
+
+export interface TraceEvent {
+  id: string;
+  timestamp: string;
+  process: string;
+  pid: number;
+  type: 'cpu' | 'memory' | 'io' | 'network' | 'spawn';
+  summary: string;
+  severity: 'low' | 'medium' | 'high';
+  delta: string;
+  durationMs: number;
+}
+
 // ---------------------------------------------------------------------------
 // Exposed API
 // ---------------------------------------------------------------------------
@@ -95,4 +113,11 @@ contextBridge.exposeInMainWorld('systemInfo', {
     ipcRenderer.on('data:processes', handler);
     return () => ipcRenderer.removeListener('data:processes', handler);
   },
+  onTraceData:     (cb: (d: TraceData)   => void) => {
+    const handler = (_: unknown, d: TraceData)   => cb(d);
+    ipcRenderer.on('data:trace',     handler);
+    return () => ipcRenderer.removeListener('data:trace',     handler);
+  },
+  startTrace:      (pid: number) => ipcRenderer.send('trace:start', { pid }),
+  stopTrace:       () => ipcRenderer.send('trace:stop'),
 });

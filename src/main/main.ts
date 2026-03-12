@@ -126,6 +126,16 @@ ipcMain.handle('get-socket-summary', async () => sysInfoModule?.jsGetSocketSumma
 ipcMain.handle('get-processes',    async () => sysInfoModule?.getProcesses());
 ipcMain.handle('get-connections',  async () => sysInfoModule?.getConnections());
 
+ipcMain.on('trace:start', (_, payload: { pid: number }) => {
+  if (!nativeWorker) return;
+  nativeWorker.postMessage({ type: 'trace:start', pid: payload.pid });
+});
+
+ipcMain.on('trace:stop', () => {
+  if (!nativeWorker) return;
+  nativeWorker.postMessage({ type: 'trace:stop' });
+});
+
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => {
