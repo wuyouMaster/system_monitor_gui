@@ -332,16 +332,24 @@ export const Dashboard: React.FC = () => {
 
           <Box sx={{ minHeight: 'calc(100vh - 240px)', display: 'flex' }}>
             <Box sx={{ flex: 1 }}>
-              {activeTab === 0 && <MemoryPanel memory={memory} locale={locale} />}
-              {activeTab === 1 && <CpuPanel cpu={cpu} cpuUsage={cpuUsage} locale={locale} />}
-              {activeTab === 2 && (
+              <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
+                <MemoryPanel memory={memory} locale={locale} />
+              </Box>
+              <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
+                <CpuPanel cpu={cpu} cpuUsage={cpuUsage} locale={locale} />
+              </Box>
+              <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
                 <SocketPanel socketSummary={socketSummary} connections={connections} locale={locale} />
-              )}
-              {activeTab === 3 && <DiskPanel disks={disks} locale={locale} />}
-              {activeTab === 4 && (
+              </Box>
+              <Box sx={{ display: activeTab === 3 ? 'block' : 'none' }}>
+                <DiskPanel disks={disks} locale={locale} />
+              </Box>
+              <Box sx={{ display: activeTab === 4 ? 'block' : 'none' }}>
                 <ProcessPanel processes={processes} processCount={processCount} locale={locale} />
-              )}
-              {activeTab === 5 && <ProcessTracePanel locale={locale} />}
+              </Box>
+              <Box sx={{ display: activeTab === 5 ? 'block' : 'none' }}>
+                <ProcessTracePanel locale={locale} />
+              </Box>
             </Box>
           </Box>
         </Box>

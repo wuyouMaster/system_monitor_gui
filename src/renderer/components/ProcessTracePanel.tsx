@@ -34,6 +34,7 @@ interface TraceEvent {
   severity: 'low' | 'medium' | 'high';
   delta: string;
   durationMs: number;
+  command?: string;
 }
 
 const TYPE_COLOR: Record<TraceEvent['type'], string> = {
@@ -80,34 +81,60 @@ const timelineStyles = {
   mt: 1.5,
 } as const;
 
+type TraceCache = {
+  events: TraceEvent[];
+  activePid: number | null;
+  isTracing: boolean;
+  pidInput: string;
+};
+
+const traceCache: TraceCache = {
+  events: [],
+  activePid: null,
+  isTracing: false,
+  pidInput: '',
+};
+
 export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ locale }) => {
   const text = i18n[locale].trace;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
-  const [events, setEvents] = useState<TraceEvent[]>([]);
-  const [pidInput, setPidInput] = useState('');
-  const [activePid, setActivePid] = useState<number | null>(null);
-  const [isTracing, setIsTracing] = useState(false);
+  const [events, setEvents] = useState<TraceEvent[]>(traceCache.events);
+  const [pidInput, setPidInput] = useState(traceCache.pidInput);
+  const [activePid, setActivePid] = useState<number | null>(traceCache.activePid);
+  const [isTracing, setIsTracing] = useState(traceCache.isTracing);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const cacheLimit = 500;
+  const pageSize = 8;
 
   const typeOptions = useMemo(() => ['all', 'cpu', 'memory', 'io', 'network', 'spawn'], []);
 
   useEffect(() => {
     const unsubTrace = window.systemInfo.onTraceData((data) => {
       if (data.reset) {
+        traceCache.events = [];
         setEvents([]);
+        setCurrentPage(1);
       }
       if (typeof data.targetPid === 'number') {
+        traceCache.activePid = data.targetPid;
+        traceCache.isTracing = true;
         setActivePid(data.targetPid);
         setIsTracing(true);
       }
       if (data.targetPid === null) {
+        traceCache.activePid = null;
+        traceCache.isTracing = false;
         setActivePid(null);
         setIsTracing(false);
       }
       if (data.events.length > 0) {
         setEvents((prev) => {
           const newEvents = [...data.events, ...prev];
-          return newEvents.slice(0, 100);
+          const trimmed = newEvents.slice(0, cacheLimit);
+          traceCache.events = trimmed;
+          return trimmed;
         });
       }
     });
@@ -121,11 +148,15 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     const pid = Number(pidInput);
     if (!Number.isFinite(pid) || pid <= 0) return;
     window.systemInfo.startTrace(pid);
+    traceCache.activePid = pid;
+    traceCache.isTracing = true;
     setIsTracing(true);
   };
 
   const handleStop = () => {
     window.systemInfo.stopTrace();
+    traceCache.activePid = null;
+    traceCache.isTracing = false;
     setIsTracing(false);
   };
 
@@ -140,8 +171,21 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     });
   }, [searchTerm, selectedType, events]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedType]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, pageCount));
+  }, [pageCount]);
+
   const totalAlerts = filteredEvents.filter((event) => event.severity === 'high').length;
-  const activeTrace = filteredEvents.slice(0, 8);
+  const pagedEvents = filteredEvents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   return (
     <Card sx={{ height: '100%', border: 'none' }}>
@@ -212,17 +256,6 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   {text.alertsHint}
                 </Typography>
               </Box>
-              <Box sx={METRIC_CARD_SX}>
-                <Typography variant="caption" color="text.secondary">
-                  {text.latency}
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-                  180 ms
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
-                  p95
-                </Typography>
-              </Box>
             </Box>
 
             <Box display="flex" alignItems="center" justifyContent="space-between" mt={2} gap={1.5}>
@@ -256,7 +289,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
             </Box>
 
             <Box sx={timelineStyles}>
-              {activeTrace.map((event) => (
+              {pagedEvents.map((event) => (
                 <Box
                   key={event.id}
                   sx={{
@@ -322,6 +355,33 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   </Typography>
                 </Box>
               )}
+              {filteredEvents.length > 0 && (
+                <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
+                  <Typography variant="caption" color="text.secondary">
+                    {text.pageLabel(currentPage, pageCount)}
+                  </Typography>
+                  <Box display="flex" gap={1}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
+                    >
+                      {text.prevPage}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={currentPage === pageCount}
+                      onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
+                      sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
+                    >
+                      {text.nextPage}
+                    </Button>
+                  </Box>
+                </Box>
+              )}
             </Box>
           </Box>
 
@@ -336,48 +396,6 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
               gap: 2,
             }}
           >
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                {text.focusTitle}
-              </Typography>
-              <Box
-                sx={{
-                  background: 'rgba(0,122,255,0.12)',
-                  border: '1px solid rgba(0,122,255,0.25)',
-                  borderRadius: 2,
-                  p: 1.5,
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {activePid ? `PID ${activePid}` : text.focusProcess}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {activePid ? `Tracing child processes` : 'PID 228 · WindowServer'}
-                </Typography>
-                <Box display="flex" gap={1} mt={1.2}>
-                  <Chip
-                    label={text.focusAuto}
-                    size="small"
-                    sx={{
-                      ...PANEL_CHIP_SX,
-                      background: 'rgba(0,122,255,0.12)',
-                      color: '#5AC8FA',
-                      border: '1px solid rgba(0,122,255,0.35)',
-                    }}
-                  />
-                  <Chip
-                    label="GPU"
-                    size="small"
-                    sx={{
-                      ...PANEL_CHIP_SX,
-                      background: 'rgba(88,86,214,0.12)',
-                      color: '#7B79E0',
-                      border: '1px solid rgba(88,86,214,0.35)',
-                    }}
-                  />
-                </Box>
-              </Box>
-            </Box>
 
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
@@ -385,7 +403,11 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
               </Typography>
               <TextField
                 value={pidInput}
-                onChange={(event) => setPidInput(event.target.value.replace(/[^0-9]/g, ''))}
+                onChange={(event) => {
+                  const nextValue = event.target.value.replace(/[^0-9]/g, '');
+                  traceCache.pidInput = nextValue;
+                  setPidInput(nextValue);
+                }}
                 placeholder="PID"
                 size="small"
                 fullWidth
@@ -426,31 +448,6 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
               </Box>
             </Box>
 
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                {text.insights}
-              </Typography>
-              <Box display="flex" flexDirection="column" gap={1.2}>
-                {text.insightItems.map((item) => (
-                  <Box
-                    key={item.title}
-                    sx={{
-                      borderRadius: 2,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      p: 1.2,
-                      background: 'rgba(255,255,255,0.02)',
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.4 }}>
-                      {item.title}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.detail}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
           </Box>
         </Box>
       </CardContent>

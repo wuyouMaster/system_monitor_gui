@@ -74,7 +74,6 @@ type I18nSchema = {
     health: string;
     alerts: string;
     alertsHint: string;
-    latency: string;
     searchPlaceholder: string;
     typeLabels: {
       all: string;
@@ -92,14 +91,12 @@ type I18nSchema = {
     delta: string;
     duration: string;
     noEvents: string;
-    focusTitle: string;
-    focusProcess: string;
-    focusAuto: string;
+    prevPage: string;
+    nextPage: string;
+    pageLabel: (current: number, total: number) => string;
     controls: string;
     start: string;
     pause: string;
-    insights: string;
-    insightItems: { title: string; detail: string }[];
   };
 };
 
@@ -178,7 +175,6 @@ export const i18n: Record<Locale, I18nSchema> = {
       health: 'Trace health',
       alerts: 'Alerts',
       alertsHint: 'High severity in last 5 min',
-      latency: 'Ingest latency',
       searchPlaceholder: 'Search process or event details',
       typeLabels: {
         all: 'All types',
@@ -196,18 +192,12 @@ export const i18n: Record<Locale, I18nSchema> = {
       delta: 'Delta',
       duration: 'Duration',
       noEvents: 'No trace events match your filters',
-      focusTitle: 'Focus target',
-      focusProcess: 'WindowServer spike',
-      focusAuto: 'Auto focus',
+      prevPage: 'Previous',
+      nextPage: 'Next',
+      pageLabel: (current, total) => `Page ${current} / ${total}`,
       controls: 'Capture controls',
       start: 'Start',
       pause: 'Pause',
-      insights: 'Insights',
-      insightItems: [
-        { title: 'GPU bursts every 45s', detail: 'Likely tied to desktop animation cycles.' },
-        { title: 'Memory climb on Chrome', detail: 'Consider checking extension allocations.' },
-        { title: 'Network jitter stabilized', detail: 'Zoom uplink recovered after 3 spikes.' },
-      ],
     },
   },
   zh: {
@@ -284,7 +274,6 @@ export const i18n: Record<Locale, I18nSchema> = {
       health: '追踪健康度',
       alerts: '告警',
       alertsHint: '近 5 分钟高严重度',
-      latency: '采集延迟',
       searchPlaceholder: '搜索进程或事件详情',
       typeLabels: {
         all: '全部类型',
@@ -302,18 +291,12 @@ export const i18n: Record<Locale, I18nSchema> = {
       delta: '变化',
       duration: '持续',
       noEvents: '没有匹配的追踪事件',
-      focusTitle: '关注目标',
-      focusProcess: 'WindowServer 峰值',
-      focusAuto: '自动聚焦',
+      prevPage: '上一页',
+      nextPage: '下一页',
+      pageLabel: (current, total) => `第 ${current} / ${total} 页`,
       controls: '采集控制',
       start: '开始',
       pause: '暂停',
-      insights: '洞察',
-      insightItems: [
-        { title: 'GPU 峰值每 45 秒出现', detail: '可能与桌面动画周期有关。' },
-        { title: 'Chrome 内存持续上升', detail: '建议检查扩展占用情况。' },
-        { title: '网络抖动趋于稳定', detail: 'Zoom 上行在 3 次峰值后恢复。' },
-      ],
     },
   },
 };
