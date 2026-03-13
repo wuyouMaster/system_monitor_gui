@@ -81,6 +81,25 @@ const timelineStyles = {
   mt: 1.5,
 } as const;
 
+const SIDE_CARD_SX = {
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: 2,
+  p: 1.6,
+} as const;
+
+const SECTION_TITLE_SX = {
+  fontWeight: 600,
+  letterSpacing: 0.1,
+} as const;
+
+const STATUS_ROW_SX = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 1,
+} as const;
+
 type TraceCache = {
   events: TraceEvent[];
   activePid: number | null;
@@ -182,6 +201,15 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   }, [pageCount]);
 
   const totalAlerts = filteredEvents.filter((event) => event.severity === 'high').length;
+  const hasEvents = filteredEvents.length > 0;
+  const isIdle = !isTracing && events.length === 0;
+  const statusLabel = isTracing ? text.live : text.paused;
+  const statusColor = isTracing ? '#32D74B' : 'rgba(235,235,245,0.6)';
+  const statusDetail = isTracing
+    ? text.liveDetail(activePid)
+    : activePid
+      ? text.pausedDetail(activePid)
+      : text.idleDetail;
   const pagedEvents = filteredEvents.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
@@ -225,13 +253,25 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
             />
         </Box>
 
-        <Box display="grid" gridTemplateColumns="minmax(320px, 1.25fr) minmax(240px, 0.75fr)" gap={2}>
+        <Box display="grid" gridTemplateColumns="minmax(360px, 1.25fr) minmax(280px, 0.75fr)" gap={2}>
           <Box>
-            <Box
-              display="grid"
-              gridTemplateColumns="repeat(3, minmax(0, 1fr))"
-              gap={1.2}
-            >
+            <Box display="flex" alignItems="center" justifyContent="space-between" gap={1.5}>
+              <Typography variant="subtitle2" sx={SECTION_TITLE_SX}>
+                {text.events}
+              </Typography>
+              <Chip
+                label={`${filteredEvents.length} ${text.events}`}
+                size="small"
+                sx={{
+                  ...PANEL_CHIP_SX,
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'rgba(235,235,245,0.7)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                }}
+              />
+            </Box>
+
+            <Box display="grid" gridTemplateColumns="repeat(3, minmax(0, 1fr))" gap={1.2} mt={1.5}>
               <Box sx={METRIC_CARD_SX}>
                 <Typography variant="caption" color="text.secondary">
                   {text.health}
@@ -254,6 +294,28 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
                   {text.alertsHint}
+                </Typography>
+              </Box>
+              <Box sx={METRIC_CARD_SX}>
+                <Typography variant="caption" color="text.secondary">
+                  {text.status}
+                </Typography>
+                <Box sx={STATUS_ROW_SX} mt={0.6}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: statusColor }}>
+                    {statusLabel}
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: statusColor,
+                      boxShadow: `0 0 0 4px ${statusColor}22`,
+                    }}
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.6 }}>
+                  {statusDetail}
                 </Typography>
               </Box>
             </Box>
@@ -296,7 +358,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                     borderRadius: 2,
                     p: 1.4,
                     border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
                   }}
                 >
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -348,14 +410,45 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   </Box>
                 </Box>
               ))}
-              {filteredEvents.length === 0 && (
-                <Box textAlign="center" py={4} sx={{ pointerEvents: 'none' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {text.noEvents}
+              {!hasEvents && (
+                <Box
+                  textAlign="center"
+                  py={5}
+                  sx={{
+                    pointerEvents: 'none',
+                    borderRadius: 2,
+                    border: '1px dashed rgba(255,255,255,0.12)',
+                    background:
+                      'radial-gradient(circle at top, rgba(50,215,75,0.08), transparent 55%), rgba(255,255,255,0.02)',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 12px',
+                      background: 'rgba(50,215,75,0.16)',
+                      border: '1px solid rgba(50,215,75,0.35)',
+                      color: '#32D74B',
+                    }}
+                  >
+                    <TraceIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(235,235,245,0.92)' }}>
+                    {isIdle ? text.emptyTitle : text.noEvents}
                   </Typography>
+                  {isIdle && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
+                      {text.emptyHint}
+                    </Typography>
+                  )}
                 </Box>
               )}
-              {filteredEvents.length > 0 && (
+              {hasEvents && (
                 <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
                   <Typography variant="caption" color="text.secondary">
                     {text.pageLabel(currentPage, pageCount)}
@@ -385,22 +478,23 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
             </Box>
           </Box>
 
-          <Box
-            sx={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 2.5,
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-            }}
-          >
-
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                {text.controls}
-              </Typography>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <Box sx={SIDE_CARD_SX}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                <Typography variant="subtitle2" sx={SECTION_TITLE_SX}>
+                  {text.controls}
+                </Typography>
+                <Chip
+                  label={statusLabel}
+                  size="small"
+                  sx={{
+                    ...PANEL_CHIP_SX,
+                    background: `${statusColor}22`,
+                    color: statusColor,
+                    border: `1px solid ${statusColor}55`,
+                  }}
+                />
+              </Box>
               <TextField
                 value={pidInput}
                 onChange={(event) => {
@@ -446,8 +540,53 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   {text.pause}
                 </Button>
               </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.1 }}>
+                {text.controlsHint}
+              </Typography>
             </Box>
 
+            <Box sx={SIDE_CARD_SX}>
+              <Typography variant="subtitle2" sx={{ ...SECTION_TITLE_SX, mb: 1 }}>
+                {text.session}
+              </Typography>
+              <Box display="flex" justifyContent="space-between" mb={1}>
+                <Typography variant="caption" color="text.secondary">
+                  {text.activePid}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {activePid ?? text.noActive}
+                </Typography>
+              </Box>
+              <Box display="flex" justifyContent="space-between" mb={1}>
+                <Typography variant="caption" color="text.secondary">
+                  {text.events}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {events.length}
+                </Typography>
+              </Box>
+              <Box display="flex" justifyContent="space-between">
+                <Typography variant="caption" color="text.secondary">
+                  {text.alerts}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#FF3B30' }}>
+                  {totalAlerts}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  mt: 1.2,
+                  p: 1,
+                  borderRadius: 1.5,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  {text.sessionHint}
+                </Typography>
+              </Box>
+            </Box>
           </Box>
         </Box>
       </CardContent>
