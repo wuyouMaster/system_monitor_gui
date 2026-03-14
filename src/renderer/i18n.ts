@@ -66,6 +66,7 @@ type I18nSchema = {
     total: string;
     noProcessInfo: string;
     noMatchingProcesses: string;
+    killTooltip: (pid: number) => string;
   };
   trace: {
     title: string;
@@ -97,6 +98,7 @@ type I18nSchema = {
     controls: string;
     start: string;
     pause: string;
+    killTooltip: (pid: number) => string;
   };
 };
 
@@ -167,6 +169,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       total: 'total',
       noProcessInfo: 'No process information available',
       noMatchingProcesses: 'No matching processes',
+      killTooltip: (pid) => `Kill PID ${pid}`,
     },
     trace: {
       title: 'Process Trace',
@@ -210,6 +213,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       controls: 'Capture controls',
       start: 'Start',
       pause: 'Pause',
+      killTooltip: (pid) => `Kill PID ${pid}`,
     },
   },
   zh: {
@@ -278,6 +282,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       total: '总计',
       noProcessInfo: '暂无进程信息',
       noMatchingProcesses: '没有匹配的进程',
+      killTooltip: (pid) => `终止进程 PID ${pid}`,
     },
     trace: {
       title: '进程追踪',
@@ -321,6 +326,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       controls: '采集控制',
       start: '开始',
       pause: '暂停',
+      killTooltip: (pid) => `终止进程 PID ${pid}`,
     },
   },
 };

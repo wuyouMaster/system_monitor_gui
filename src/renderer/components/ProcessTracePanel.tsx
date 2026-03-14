@@ -408,7 +408,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                         }}
                       />
                       {event.pid > 0 && (
-                        <Tooltip title={`Kill PID ${event.pid}`} placement="left">
+                        <Tooltip title={text.killTooltip(event.pid)} placement="left">
                           <IconButton
                             size="small"
                             onClick={() => handleKill(event.pid)}

@@ -120,7 +120,9 @@ const ProcessRow: React.FC<{
   style: React.CSSProperties;
   searchTerm: string;
   onKill: (pid: number) => void;
-}> = React.memo(({ process, style, searchTerm, onKill }) => {
+  locale: Locale;
+}> = React.memo(({ process, style, searchTerm, onKill, locale }) => {
+    const text = i18n[locale].process;
     const color = getStatusColor(process.status);
     return (
       <Box
@@ -189,7 +191,7 @@ const ProcessRow: React.FC<{
 
         {/* Kill button */}
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Tooltip title={`Kill PID ${process.pid}`} placement="left">
+          <Tooltip title={text.killTooltip(process.pid)} placement="left">
             <IconButton
               size="small"
               onClick={() => onKill(process.pid)}
@@ -344,6 +346,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
                   process={filteredProcesses[virtualRow.index]}
                   searchTerm={searchTerm}
                   onKill={handleKill}
+                  locale={locale}
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                 />
               ))}
