@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Card,
@@ -9,11 +9,13 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   ViewList as ProcessIcon,
   Close as ClearIcon,
+  StopCircle as KillIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
 
@@ -49,7 +51,7 @@ const getStatusColor = (status: string): string => {
 };
 
 // Column layout shared between header and rows
-const COL_TEMPLATE = '56px 1fr 84px 72px';
+const COL_TEMPLATE = '56px 1fr 84px 72px 36px';
 
 const ROW_HEIGHT = 44; // px — fixed height enables O(1) scroll position math
 
@@ -113,13 +115,14 @@ const renderHighlightedText = (text: string, rawQuery: string): React.ReactNode 
 };
 
 // Individual row — memoized so it only re-renders when its own process data changes
-const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties; searchTerm: string }> =
-  React.memo(
-  ({ process, style, searchTerm }) => {
+const ProcessRow: React.FC<{
+  process: Process;
+  style: React.CSSProperties;
+  searchTerm: string;
+  onKill: (pid: number) => void;
+}> = React.memo(({ process, style, searchTerm, onKill }) => {
     const color = getStatusColor(process.status);
     return (
-      // VSCode pattern: position:absolute + transform:translateY moves the row to the
-      // right visual position entirely on the GPU compositor — zero layout cost during scroll.
       <Box
         sx={{
           position: 'absolute',
@@ -132,7 +135,6 @@ const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties; searc
           alignItems: 'center',
           px: 1,
           borderBottom: '1px solid rgba(255,255,255,0.04)',
-          pointerEvents: 'none',
         }}
         style={style}
       >
@@ -184,6 +186,23 @@ const ProcessRow: React.FC<{ process: Process; style: React.CSSProperties; searc
             }}
           />
         </Box>
+
+        {/* Kill button */}
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Tooltip title={`Kill PID ${process.pid}`} placement="left">
+            <IconButton
+              size="small"
+              onClick={() => onKill(process.pid)}
+              sx={{
+                color: 'rgba(255,59,48,0.7)',
+                p: '3px',
+                '&:hover': { color: '#FF3B30', background: 'rgba(255,59,48,0.12)' },
+              }}
+            >
+              <KillIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
     );
   },
@@ -194,6 +213,11 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
     const text = i18n[locale].process;
     const parentRef = useRef<HTMLDivElement>(null);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const handleKill = useCallback(async (pid: number) => {
+      const result = await window.systemInfo.killProcess(pid);
+      if (result?.error) console.error(`Kill PID ${pid} failed:`, result.error);
+    }, []);
 
     const sortedProcesses = useMemo(
       () => [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage),
@@ -303,6 +327,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
             <Typography sx={HEADER_CELL_SX}>{text.name}</Typography>
             <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'right' }}>{text.memory}</Typography>
             <Typography sx={{ ...HEADER_CELL_SX, textAlign: 'center' }}>{text.status}</Typography>
+            <Box />
           </Box>
 
           {/* Virtual scroll viewport */}
@@ -318,6 +343,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
                   key={virtualRow.key}
                   process={filteredProcesses[virtualRow.index]}
                   searchTerm={searchTerm}
+                  onKill={handleKill}
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                 />
               ))}

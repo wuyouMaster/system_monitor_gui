@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -11,6 +11,8 @@ import {
   MenuItem,
   LinearProgress,
   Divider,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   Timeline as TraceIcon,
@@ -21,6 +23,7 @@ import {
   Bolt as SpikeIcon,
   Memory as MemoryIcon,
   Visibility as FocusIcon,
+  StopCircle as KillIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
 
@@ -171,6 +174,11 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     traceCache.isTracing = true;
     setIsTracing(true);
   };
+
+  const handleKill = useCallback(async (pid: number) => {
+    const result = await window.systemInfo.killProcess(pid);
+    if (result?.error) console.error(`Kill PID ${pid} failed:`, result.error);
+  }, []);
 
   const handleStop = () => {
     window.systemInfo.stopTrace();
@@ -388,16 +396,33 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                         </Typography>
                       </Box>
                     </Box>
-                    <Chip
-                      label={text.severityLabels[event.severity]}
-                      size="small"
-                      sx={{
-                        ...PANEL_CHIP_SX,
-                        background: `${SEVERITY_COLOR[event.severity]}20`,
-                        color: SEVERITY_COLOR[event.severity],
-                        border: `1px solid ${SEVERITY_COLOR[event.severity]}55`,
-                      }}
-                    />
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      <Chip
+                        label={text.severityLabels[event.severity]}
+                        size="small"
+                        sx={{
+                          ...PANEL_CHIP_SX,
+                          background: `${SEVERITY_COLOR[event.severity]}20`,
+                          color: SEVERITY_COLOR[event.severity],
+                          border: `1px solid ${SEVERITY_COLOR[event.severity]}55`,
+                        }}
+                      />
+                      {event.pid > 0 && (
+                        <Tooltip title={`Kill PID ${event.pid}`} placement="left">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleKill(event.pid)}
+                            sx={{
+                              color: 'rgba(255,59,48,0.7)',
+                              p: '3px',
+                              '&:hover': { color: '#FF3B30', background: 'rgba(255,59,48,0.12)' },
+                            }}
+                          >
+                            <KillIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
                   </Box>
                   <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
                   <Box display="flex" justifyContent="space-between" mt={1}>

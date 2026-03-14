@@ -132,6 +132,29 @@ ipcMain.handle('get-socket-summary', async () => sysInfoModule?.jsGetSocketSumma
 ipcMain.handle('get-processes',    async () => sysInfoModule?.getProcesses());
 ipcMain.handle('get-connections',  async () => sysInfoModule?.getConnections());
 
+ipcMain.handle('list-dir', async (_, path: string) => {
+  if (!sysInfoModule) return { error: 'Native module not loaded' };
+  try {
+    const listDir = sysInfoModule.listDir || sysInfoModule.list_dir;
+    if (typeof listDir !== 'function') return { error: 'listDir API not available' };
+    return { entries: listDir(path) };
+  } catch (e: any) {
+    return { error: e?.message ?? String(e) };
+  }
+});
+
+ipcMain.handle('kill-process', async (_, pid: number) => {
+  if (!sysInfoModule) return { error: 'Native module not loaded' };
+  try {
+    const killFn = sysInfoModule.killProcess || sysInfoModule.kill_process;
+    if (typeof killFn !== 'function') return { error: 'killProcess API not available' };
+    killFn(pid);
+    return { ok: true };
+  } catch (e: any) {
+    return { error: e?.message ?? String(e) };
+  }
+});
+
 ipcMain.on('trace:start', (_, payload: { pid: number }) => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: 'trace:start', pid: payload.pid });

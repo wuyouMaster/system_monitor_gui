@@ -62,8 +62,8 @@ const CpuCoreCard: React.FC<CpuCoreCardProps> = React.memo(
             {currentUsage.toFixed(1)}%
           </Typography>
         </Box>
-        <Box sx={{ height: 48 }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <Box sx={{ height: 48, minHeight: 48 }}>
+          <ResponsiveContainer width="100%" height={48}>
             <LineChart data={chartData}>
               <Line
                 type="monotone"

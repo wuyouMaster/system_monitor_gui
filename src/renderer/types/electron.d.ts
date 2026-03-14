@@ -7,8 +7,17 @@ declare global {
       onTraceData:   (cb: (d: { events: TraceEvent[]; reset?: boolean; targetPid?: number | null }) => void) => () => void;
       startTrace:    (pid: number) => void;
       stopTrace:     () => void;
+      killProcess:   (pid: number) => Promise<{ ok?: boolean; error?: string }>;
+      listDir:       (path: string) => Promise<{ entries?: DirEntry[]; error?: string }>;
     };
   }
+}
+
+export interface DirEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  size: number;
 }
 
 export interface TraceEvent {

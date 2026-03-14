@@ -110,6 +110,27 @@ electron.ipcMain.handle("get-disks", async () => sysInfoModule == null ? void 0 
 electron.ipcMain.handle("get-socket-summary", async () => sysInfoModule == null ? void 0 : sysInfoModule.jsGetSocketSummary());
 electron.ipcMain.handle("get-processes", async () => sysInfoModule == null ? void 0 : sysInfoModule.getProcesses());
 electron.ipcMain.handle("get-connections", async () => sysInfoModule == null ? void 0 : sysInfoModule.getConnections());
+electron.ipcMain.handle("list-dir", async (_, path2) => {
+  if (!sysInfoModule) return { error: "Native module not loaded" };
+  try {
+    const listDir = sysInfoModule.listDir || sysInfoModule.list_dir;
+    if (typeof listDir !== "function") return { error: "listDir API not available" };
+    return { entries: listDir(path2) };
+  } catch (e) {
+    return { error: (e == null ? void 0 : e.message) ?? String(e) };
+  }
+});
+electron.ipcMain.handle("kill-process", async (_, pid) => {
+  if (!sysInfoModule) return { error: "Native module not loaded" };
+  try {
+    const killFn = sysInfoModule.killProcess || sysInfoModule.kill_process;
+    if (typeof killFn !== "function") return { error: "killProcess API not available" };
+    killFn(pid);
+    return { ok: true };
+  } catch (e) {
+    return { error: (e == null ? void 0 : e.message) ?? String(e) };
+  }
+});
 electron.ipcMain.on("trace:start", (_, payload) => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: "trace:start", pid: payload.pid });
