@@ -12,7 +12,9 @@ function getNativeModuleName(): string {
   const archMap: Record<string, string> = { x64: 'x64', arm64: 'arm64', ia32: 'ia32' };
   const plat = platformMap[process.platform] || process.platform;
   const arc = archMap[process.arch] || process.arch;
-  return `index.${plat}-${arc}.node`;
+  // Windows uses MSVC toolchain by default, so NAPI-RS appends -msvc to the filename
+  const toolchainSuffix = process.platform === 'win32' ? '-msvc' : '';
+  return `index.${plat}-${arc}${toolchainSuffix}.node`;
 }
 
 function loadNativeModule(): void {
@@ -64,9 +66,13 @@ function startDataWorker() {
   });
   nativeWorker.on('exit', (code) => {
     if (code !== 0) {
-      console.error(`native worker exited with code ${code}`);
+      console.error(`native worker exited with code ${code}, restarting in 1s...`);
     }
     nativeWorker = null;
+    // Auto-restart unless the window is gone
+    if (win && !win.isDestroyed()) {
+      setTimeout(() => startDataWorker(), 1000);
+    }
   });
 
   nativeWorker.postMessage({ type: 'start' });

@@ -11,7 +11,8 @@ function getNativeModuleName() {
   const archMap = { x64: "x64", arm64: "arm64", ia32: "ia32" };
   const plat = platformMap[process.platform] || process.platform;
   const arc = archMap[process.arch] || process.arch;
-  return `index.${plat}-${arc}.node`;
+  const toolchainSuffix = process.platform === "win32" ? "-msvc" : "";
+  return `index.${plat}-${arc}${toolchainSuffix}.node`;
 }
 function loadNativeModule() {
   const moduleName = getNativeModuleName();
@@ -56,9 +57,12 @@ function startDataWorker() {
   });
   nativeWorker.on("exit", (code) => {
     if (code !== 0) {
-      console.error(`native worker exited with code ${code}`);
+      console.error(`native worker exited with code ${code}, restarting in 1s...`);
     }
     nativeWorker = null;
+    if (win && !win.isDestroyed()) {
+      setTimeout(() => startDataWorker(), 1e3);
+    }
   });
   nativeWorker.postMessage({ type: "start" });
 }
