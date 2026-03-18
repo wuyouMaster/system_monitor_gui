@@ -8,7 +8,8 @@ import {
   TextField,
   InputAdornment,
   Button,
-  MenuItem,
+  Tabs,
+  Tab,
   LinearProgress,
   Divider,
   IconButton,
@@ -24,6 +25,8 @@ import {
   Memory as MemoryIcon,
   Visibility as FocusIcon,
   StopCircle as KillIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
 
@@ -126,6 +129,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [activePid, setActivePid] = useState<number | null>(traceCache.activePid);
   const [isTracing, setIsTracing] = useState(traceCache.isTracing);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedCommands, setExpandedCommands] = useState<Record<string, boolean>>({});
 
   const cacheLimit = 500;
   const pageSize = 8;
@@ -186,6 +190,13 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     traceCache.isTracing = false;
     setIsTracing(false);
   };
+
+  const toggleCommand = useCallback((eventId: string) => {
+    setExpandedCommands((prev) => ({
+      ...prev,
+      [eventId]: !prev[eventId],
+    }));
+  }, []);
 
   const filteredEvents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -261,7 +272,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
             />
         </Box>
 
-        <Box display="grid" gridTemplateColumns="minmax(360px, 1.25fr) minmax(280px, 0.75fr)" gap={2}>
+        <Box display="grid" gridTemplateColumns="minmax(360px, 1.25fr) minmax(220px, 0.4fr)" gap={2}>
           <Box>
             <Box display="flex" alignItems="center" justifyContent="space-between" gap={1.5}>
               <Typography variant="subtitle2" sx={SECTION_TITLE_SX}>
@@ -343,163 +354,231 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   ),
                 }}
               />
-              <TextField
-                select
-                size="small"
-                value={selectedType}
-                onChange={(event) => setSelectedType(event.target.value)}
-                sx={{ minWidth: 150 }}
-              >
-                {typeOptions.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {text.typeLabels[type as keyof typeof text.typeLabels]}
-                  </MenuItem>
-                ))}
-              </TextField>
             </Box>
 
-            <Box sx={timelineStyles}>
-              {pagedEvents.map((event) => (
-                <Box
-                  key={event.id}
-                  sx={{
-                    borderRadius: 2,
-                    p: 1.4,
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-                  }}
-                >
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Box
-                        sx={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 1.5,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: `${TYPE_COLOR[event.type]}20`,
-                          color: TYPE_COLOR[event.type],
-                          border: `1px solid ${TYPE_COLOR[event.type]}55`,
-                        }}
-                      >
-                        {typeIconMap[event.type]}
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {event.summary}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {event.process} · {event.pid} · {event.timestamp}
-                          {event.command ? ` · ${event.command}` : ''}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip
-                        label={text.severityLabels[event.severity]}
-                        size="small"
-                        sx={{
-                          ...PANEL_CHIP_SX,
-                          background: `${SEVERITY_COLOR[event.severity]}20`,
-                          color: SEVERITY_COLOR[event.severity],
-                          border: `1px solid ${SEVERITY_COLOR[event.severity]}55`,
-                        }}
-                      />
-                      {event.pid > 0 && (
-                        <Tooltip title={text.killTooltip(event.pid)} placement="left">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleKill(event.pid)}
-                            sx={{
-                              color: 'rgba(255,59,48,0.7)',
-                              p: '3px',
-                              '&:hover': { color: '#FF3B30', background: 'rgba(255,59,48,0.12)' },
-                            }}
-                          >
-                            <KillIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Box>
-                  </Box>
-                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
-                  <Box display="flex" justifyContent="space-between" mt={1}>
-                    <Typography variant="caption" color="text.secondary">
-                      {text.delta} {event.delta}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {text.duration} {event.durationMs} ms
-                    </Typography>
-                  </Box>
-                </Box>
-              ))}
-              {!hasEvents && (
-                <Box
-                  textAlign="center"
-                  py={5}
-                  sx={{
-                    pointerEvents: 'none',
-                    borderRadius: 2,
-                    border: '1px dashed rgba(255,255,255,0.12)',
-                    background:
-                      'radial-gradient(circle at top, rgba(50,215,75,0.08), transparent 55%), rgba(255,255,255,0.02)',
-                  }}
-                >
+            <Box display="flex" gap={1.5} mt={1.5}>
+              <Tabs
+                value={selectedType}
+                onChange={(_, value) => setSelectedType(value)}
+                orientation="vertical"
+                variant="scrollable"
+                allowScrollButtonsMobile
+                sx={{
+                  minWidth: 120,
+                  '& .MuiTab-root': {
+                    alignItems: 'flex-start',
+                    minHeight: 32,
+                    px: 1.2,
+                    py: 0.6,
+                    textTransform: 'none',
+                    fontSize: 12,
+                    color: 'rgba(235,235,245,0.7)',
+                  },
+                  '& .Mui-selected': {
+                    color: '#32D74B',
+                    fontWeight: 600,
+                  },
+                  '& .MuiTabs-indicator': {
+                    left: 0,
+                    backgroundColor: '#32D74B',
+                  },
+                }}
+              >
+                {typeOptions.map((type) => (
+                  <Tab key={type} value={type} label={text.typeLabels[type as keyof typeof text.typeLabels]} />
+                ))}
+              </Tabs>
+              <Box sx={{ ...timelineStyles, mt: 0, flex: 1 }}>
+                {pagedEvents.map((event) => (
                   <Box
+                    key={event.id}
                     sx={{
-                      width: 44,
-                      height: 44,
                       borderRadius: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: '0 auto 12px',
-                      background: 'rgba(50,215,75,0.16)',
-                      border: '1px solid rgba(50,215,75,0.35)',
-                      color: '#32D74B',
+                      p: 1.4,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
                     }}
                   >
-                    <TraceIcon sx={{ fontSize: 20 }} />
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Box
+                          sx={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: `${TYPE_COLOR[event.type]}20`,
+                            color: TYPE_COLOR[event.type],
+                            border: `1px solid ${TYPE_COLOR[event.type]}55`,
+                          }}
+                        >
+                          {typeIconMap[event.type]}
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {event.summary}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {event.process} · {event.pid} · {event.timestamp}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        {event.command && (
+                          <Tooltip
+                            title={expandedCommands[event.id] ? text.hideCommand : text.showCommand}
+                            placement="left"
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={() => toggleCommand(event.id)}
+                              sx={{
+                                color: 'rgba(235,235,245,0.6)',
+                                p: '3px',
+                                '&:hover': { color: '#32D74B', background: 'rgba(50,215,75,0.12)' },
+                              }}
+                            >
+                              {expandedCommands[event.id] ? (
+                                <ExpandLessIcon sx={{ fontSize: 16 }} />
+                              ) : (
+                                <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Chip
+                          label={text.severityLabels[event.severity]}
+                          size="small"
+                          sx={{
+                            ...PANEL_CHIP_SX,
+                            background: `${SEVERITY_COLOR[event.severity]}20`,
+                            color: SEVERITY_COLOR[event.severity],
+                            border: `1px solid ${SEVERITY_COLOR[event.severity]}55`,
+                          }}
+                        />
+                        {event.pid > 0 && (
+                          <Tooltip title={text.killTooltip(event.pid)} placement="left">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleKill(event.pid)}
+                              sx={{
+                                color: 'rgba(255,59,48,0.7)',
+                                p: '3px',
+                                '&:hover': { color: '#FF3B30', background: 'rgba(255,59,48,0.12)' },
+                              }}
+                            >
+                              <KillIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </Box>
+                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+                    {event.command && expandedCommands[event.id] && (
+                      <Box
+                        mt={1}
+                        px={1}
+                        py={0.8}
+                        sx={{
+                          borderRadius: 1.5,
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3 }}>
+                          {text.commandLabel}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: 'rgba(235,235,245,0.92)',
+                            wordBreak: 'break-all',
+                          }}
+                        >
+                          {event.command}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box display="flex" justifyContent="space-between" mt={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        {text.delta} {event.delta}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {text.duration} {event.durationMs} ms
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(235,235,245,0.92)' }}>
-                    {isIdle ? text.emptyTitle : text.noEvents}
-                  </Typography>
-                  {isIdle && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
-                      {text.emptyHint}
+                ))}
+                {!hasEvents && (
+                  <Box
+                    textAlign="center"
+                    py={5}
+                    sx={{
+                      pointerEvents: 'none',
+                      borderRadius: 2,
+                      border: '1px dashed rgba(255,255,255,0.12)',
+                      background:
+                        'radial-gradient(circle at top, rgba(50,215,75,0.08), transparent 55%), rgba(255,255,255,0.02)',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px',
+                        background: 'rgba(50,215,75,0.16)',
+                        border: '1px solid rgba(50,215,75,0.35)',
+                        color: '#32D74B',
+                      }}
+                    >
+                      <TraceIcon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(235,235,245,0.92)' }}>
+                      {isIdle ? text.emptyTitle : text.noEvents}
                     </Typography>
-                  )}
-                </Box>
-              )}
-              {hasEvents && (
-                <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
-                  <Typography variant="caption" color="text.secondary">
-                    {text.pageLabel(currentPage, pageCount)}
-                  </Typography>
-                  <Box display="flex" gap={1}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                      sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
-                    >
-                      {text.prevPage}
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={currentPage === pageCount}
-                      onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
-                      sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
-                    >
-                      {text.nextPage}
-                    </Button>
+                    {isIdle && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
+                        {text.emptyHint}
+                      </Typography>
+                    )}
                   </Box>
-                </Box>
-              )}
+                )}
+                {hasEvents && (
+                  <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      {text.pageLabel(currentPage, pageCount)}
+                    </Typography>
+                    <Box display="flex" gap={1}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
+                      >
+                        {text.prevPage}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={currentPage === pageCount}
+                        onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
+                        sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
+                      >
+                        {text.nextPage}
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
             </Box>
           </Box>
 
