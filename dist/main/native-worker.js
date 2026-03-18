@@ -313,12 +313,12 @@ function pushProcesses() {
             eventCounter++;
             const severity = Math.abs(memoryDeltaPercent) > 50 ? "high" : "medium";
             const deltaMB = (memoryDelta / (1024 * 1024)).toFixed(1);
-            const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+            const timestamp2 = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
             emit("data:trace", {
               events: [
                 {
                   id: `evt_${String(eventCounter).padStart(3, "0")}`,
-                  timestamp,
+                  timestamp: timestamp2,
                   process: snapshot.name,
                   pid: snapshot.pid,
                   type: "memory",
@@ -333,6 +333,17 @@ function pushProcesses() {
           }
         }
         previousTrackedProcess = snapshot;
+        const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { hour12: false });
+        const memorySample = {
+          pid: snapshot.pid,
+          timestamp,
+          memoryBytes: snapshot.memoryUsage
+        };
+        emit("data:trace", {
+          events: [],
+          targetPid: trackedPid,
+          memorySample
+        });
       }
     }
   } catch (e) {

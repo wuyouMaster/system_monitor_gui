@@ -15,6 +15,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import {
   Timeline as TraceIcon,
   PlayArrow as PlayIcon,
@@ -40,6 +41,12 @@ interface TraceEvent {
   durationMs: number;
   command?: string;
   details?: string;
+}
+
+interface TraceMemorySample {
+  pid: number;
+  timestamp: string;
+  memoryBytes: number;
 }
 
 const TYPE_COLOR: Record<TraceEvent['type'], string> = {
@@ -102,6 +109,7 @@ type TraceCache = {
   activePid: number | null;
   isTracing: boolean;
   pidInput: string;
+  memorySamples: TraceMemorySample[];
 };
 
 const traceCache: TraceCache = {
@@ -109,13 +117,14 @@ const traceCache: TraceCache = {
   activePid: null,
   isTracing: false,
   pidInput: '',
+  memorySamples: [],
 };
 
 export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ locale }) => {
   const text = i18n[locale].trace;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
-  const [events, setEvents] = useState<TraceEvent[]>(traceCache.events);
+  const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
   const [pidInput, setPidInput] = useState(traceCache.pidInput);
   const [activePid, setActivePid] = useState<number | null>(traceCache.activePid);
   const [isTracing, setIsTracing] = useState(traceCache.isTracing);
@@ -131,8 +140,9 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     const unsubTrace = window.systemInfo.onTraceData((data) => {
       if (data.reset) {
         traceCache.events = [];
-        setEvents([]);
         setCurrentPage(1);
+        traceCache.memorySamples = [];
+        setMemorySamples([]);
       }
       if (typeof data.targetPid === 'number') {
         traceCache.activePid = data.targetPid;
@@ -147,10 +157,14 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         setIsTracing(false);
       }
       if (data.events.length > 0) {
-        setEvents((prev) => {
-          const newEvents = [...data.events, ...prev];
-          const trimmed = newEvents.slice(0, cacheLimit);
-          traceCache.events = trimmed;
+        const newEvents = [...data.events, ...traceCache.events];
+        traceCache.events = newEvents.slice(0, cacheLimit);
+      }
+      if (data.memorySample) {
+        setMemorySamples((prev) => {
+          const next = [...prev, data.memorySample as TraceMemorySample];
+          const trimmed = next.slice(-80);
+          traceCache.memorySamples = trimmed;
           return trimmed;
         });
       }
@@ -191,14 +205,14 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
 
   const filteredEvents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    return events.filter((event) => {
+    return traceCache.events.filter((event) => {
       const typeMatched = selectedType === 'all' || event.type === selectedType;
       if (!typeMatched) return false;
       if (!query) return true;
       const haystack = `${event.process} ${event.summary} ${event.pid}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [searchTerm, selectedType, events]);
+  }, [searchTerm, selectedType, memorySamples]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -210,9 +224,9 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     setCurrentPage((prev) => Math.min(prev, pageCount));
   }, [pageCount]);
 
-  const totalAlerts = filteredEvents.filter((event) => event.severity === 'high').length;
+  const totalAlerts = traceCache.events.filter((event) => event.severity === 'high').length;
   const hasEvents = filteredEvents.length > 0;
-  const isIdle = !isTracing && events.length === 0;
+  const isIdle = !isTracing && traceCache.events.length === 0;
   const statusLabel = isTracing ? text.live : text.paused;
   const statusColor = isTracing ? '#32D74B' : 'rgba(235,235,245,0.6)';
   const statusDetail = isTracing
@@ -224,6 +238,16 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
+
+  const memoryChartData = useMemo(
+    () => memorySamples.map((sample, index) => ({ index, memory: sample.memoryBytes / (1024 * 1024) })),
+    [memorySamples],
+  );
+  const latestMemoryMb = useMemo(() => {
+    const last = memorySamples[memorySamples.length - 1];
+    if (!last) return null;
+    return last.memoryBytes / (1024 * 1024);
+  }, [memorySamples]);
 
   return (
     <Card sx={{ height: '100%', border: 'none' }}>
@@ -380,174 +404,212 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                 ))}
               </Tabs>
               <Box sx={{ ...timelineStyles, mt: 0, flex: 1 }}>
-                {pagedEvents.map((event) => (
+                {selectedType === 'memory' ? (
                   <Box
-                    key={event.id}
                     sx={{
                       borderRadius: 2,
-                      p: 1.4,
+                      p: 2,
                       border: '1px solid rgba(255,255,255,0.08)',
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                      background:
+                        'linear-gradient(135deg, rgba(90,200,250,0.08) 0%, rgba(255,255,255,0.01) 100%)',
                     }}
                   >
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {event.summary}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {event.process} · {event.pid} · {event.timestamp}
-                          {event.details ? ` · ${event.details}` : ''}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" gap={0.5}>
-                        <Chip
-                          label={text.severityLabels[event.severity]}
-                          size="small"
-                          sx={{
-                            ...PANEL_CHIP_SX,
-                            background: `${SEVERITY_COLOR[event.severity]}20`,
-                            color: SEVERITY_COLOR[event.severity],
-                            border: `1px solid ${SEVERITY_COLOR[event.severity]}55`,
-                          }}
-                        />
-                        {event.pid > 0 && (
-                          <Tooltip title={text.killTooltip(event.pid)} placement="left">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleKill(event.pid)}
-                              sx={{
-                                color: 'rgba(255,59,48,0.7)',
-                                p: '3px',
-                                '&:hover': { color: '#FF3B30', background: 'rgba(255,59,48,0.12)' },
-                              }}
-                            >
-                              <KillIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {text.memoryTrend}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {latestMemoryMb === null ? text.noEvents : `${latestMemoryMb.toFixed(1)} MB`}
+                      </Typography>
                     </Box>
-                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
-                    {event.command && expandedCommands[event.id] && (
+                    <Box sx={{ height: 220 }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={memoryChartData}>
+                          <Line
+                            type="monotone"
+                            dataKey="memory"
+                            stroke="#5AC8FA"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Box>
+                ) : (
+                  <>
+                    {pagedEvents.map((event) => (
                       <Box
-                        mt={1}
-                        px={1}
-                        py={0.8}
+                        key={event.id}
                         sx={{
-                          borderRadius: 1.5,
-                          background: 'rgba(255,255,255,0.03)',
+                          borderRadius: 2,
+                          p: 1.4,
                           border: '1px solid rgba(255,255,255,0.08)',
+                          background:
+                            'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
                         }}
                       >
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3 }}>
-                          {text.commandLabel}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: 'rgba(235,235,245,0.92)',
-                            wordBreak: 'break-all',
-                          }}
-                        >
-                          {event.command}
-                        </Typography>
-                      </Box>
-                    )}
-                    {event.command && (
-                      <Box display="flex" justifyContent="flex-start" mt={1}>
-                        <Tooltip title={expandedCommands[event.id] ? text.hideCommand : text.showCommand}>
-                          <Button
-                            variant="text"
-                            size="small"
-                            onClick={() => toggleCommand(event.id)}
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {event.summary}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {event.process} · {event.pid} · {event.timestamp}
+                              {event.details ? ` · ${event.details}` : ''}
+                            </Typography>
+                          </Box>
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <Chip
+                              label={text.severityLabels[event.severity]}
+                              size="small"
+                              sx={{
+                                ...PANEL_CHIP_SX,
+                                background: `${SEVERITY_COLOR[event.severity]}20`,
+                                color: SEVERITY_COLOR[event.severity],
+                                border: `1px solid ${SEVERITY_COLOR[event.severity]}55`,
+                              }}
+                            />
+                            {event.pid > 0 && (
+                              <Tooltip title={text.killTooltip(event.pid)} placement="left">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleKill(event.pid)}
+                                  sx={{
+                                    color: 'rgba(255,59,48,0.7)',
+                                    p: '3px',
+                                    '&:hover': { color: '#FF3B30', background: 'rgba(255,59,48,0.12)' },
+                                  }}
+                                >
+                                  <KillIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                        </Box>
+                        <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+                        {event.command && expandedCommands[event.id] && (
+                          <Box
+                            mt={1}
+                            px={1}
+                            py={0.8}
                             sx={{
-                              minWidth: 0,
-                              px: 1.2,
-                              color: 'primary.contrastText',
-                              textTransform: 'none',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              letterSpacing: 0.2,
-                              borderRadius: 1,
-                              border: '1px solid transparent',
-                              background: 'primary.main',
-                              '&:hover': { background: 'primary.dark' },
+                              borderRadius: 1.5,
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.08)',
                             }}
                           >
-                            {expandedCommands[event.id] ? text.hideCommand : text.showCommand}
-                          </Button>
-                        </Tooltip>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.3 }}>
+                              {text.commandLabel}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontFamily: 'monospace',
+                                fontSize: 12,
+                                color: 'rgba(235,235,245,0.92)',
+                                wordBreak: 'break-all',
+                              }}
+                            >
+                              {event.command}
+                            </Typography>
+                          </Box>
+                        )}
+                        {event.command && (
+                          <Box display="flex" justifyContent="flex-start" mt={1}>
+                            <Tooltip title={expandedCommands[event.id] ? text.hideCommand : text.showCommand}>
+                              <Button
+                                variant="text"
+                                size="small"
+                                onClick={() => toggleCommand(event.id)}
+                                sx={{
+                                  minWidth: 0,
+                                  px: 1.2,
+                                  color: 'primary.contrastText',
+                                  textTransform: 'none',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  letterSpacing: 0.2,
+                                  borderRadius: 1,
+                                  border: '1px solid transparent',
+                                  background: 'primary.main',
+                                  '&:hover': { background: 'primary.dark' },
+                                }}
+                              >
+                                {expandedCommands[event.id] ? text.hideCommand : text.showCommand}
+                              </Button>
+                            </Tooltip>
+                          </Box>
+                        )}
+                      </Box>
+                    ))}
+                    {!hasEvents && (
+                      <Box
+                        textAlign="center"
+                        py={5}
+                        sx={{
+                          pointerEvents: 'none',
+                          borderRadius: 2,
+                          border: '1px dashed rgba(255,255,255,0.12)',
+                          background:
+                            'radial-gradient(circle at top, rgba(50,215,75,0.08), transparent 55%), rgba(255,255,255,0.02)',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 12px',
+                            background: 'rgba(50,215,75,0.16)',
+                            border: '1px solid rgba(50,215,75,0.35)',
+                            color: '#32D74B',
+                          }}
+                        >
+                          <TraceIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(235,235,245,0.92)' }}>
+                          {isIdle ? text.emptyTitle : text.noEvents}
+                        </Typography>
+                        {isIdle && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
+                            {text.emptyHint}
+                          </Typography>
+                        )}
                       </Box>
                     )}
-                  </Box>
-                ))}
-                {!hasEvents && (
-                  <Box
-                    textAlign="center"
-                    py={5}
-                    sx={{
-                      pointerEvents: 'none',
-                      borderRadius: 2,
-                      border: '1px dashed rgba(255,255,255,0.12)',
-                      background:
-                        'radial-gradient(circle at top, rgba(50,215,75,0.08), transparent 55%), rgba(255,255,255,0.02)',
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 12px',
-                        background: 'rgba(50,215,75,0.16)',
-                        border: '1px solid rgba(50,215,75,0.35)',
-                        color: '#32D74B',
-                      }}
-                    >
-                      <TraceIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(235,235,245,0.92)' }}>
-                      {isIdle ? text.emptyTitle : text.noEvents}
-                    </Typography>
-                    {isIdle && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
-                        {text.emptyHint}
-                      </Typography>
+                    {hasEvents && (
+                      <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
+                        <Typography variant="caption" color="text.secondary">
+                          {text.pageLabel(currentPage, pageCount)}
+                        </Typography>
+                        <Box display="flex" gap={1}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                            sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
+                          >
+                            {text.prevPage}
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={currentPage === pageCount}
+                            onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
+                            sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
+                          >
+                            {text.nextPage}
+                          </Button>
+                        </Box>
+                      </Box>
                     )}
-                  </Box>
-                )}
-                {hasEvents && (
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
-                    <Typography variant="caption" color="text.secondary">
-                      {text.pageLabel(currentPage, pageCount)}
-                    </Typography>
-                    <Box display="flex" gap={1}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                        sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
-                      >
-                        {text.prevPage}
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        disabled={currentPage === pageCount}
-                        onClick={() => setCurrentPage((prev) => Math.min(pageCount, prev + 1))}
-                        sx={{ borderColor: 'rgba(255,255,255,0.16)', color: 'rgba(235,235,245,0.75)' }}
-                      >
-                        {text.nextPage}
-                      </Button>
-                    </Box>
-                  </Box>
+                  </>
                 )}
               </Box>
             </Box>
@@ -637,7 +699,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   {text.events}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {events.length}
+                  {traceCache.events.length}
                 </Typography>
               </Box>
               <Box display="flex" justifyContent="space-between">

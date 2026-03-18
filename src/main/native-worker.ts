@@ -28,6 +28,12 @@ interface TraceEvent {
   details?: string;
 }
 
+interface TraceMemorySample {
+  pid: number;
+  timestamp: string;
+  memoryBytes: number;
+}
+
 interface ProcessSnapshot {
   pid: number;
   name: string;
@@ -405,6 +411,18 @@ function pushProcesses() {
         }
 
         previousTrackedProcess = snapshot;
+
+        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const memorySample: TraceMemorySample = {
+          pid: snapshot.pid,
+          timestamp,
+          memoryBytes: snapshot.memoryUsage,
+        };
+        emit('data:trace', {
+          events: [],
+          targetPid: trackedPid,
+          memorySample,
+        });
       }
     }
   } catch (e) {
