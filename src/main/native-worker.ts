@@ -25,6 +25,7 @@ interface TraceEvent {
   severity: 'low' | 'medium' | 'high';
   delta: string;
   durationMs: number;
+  details?: string;
 }
 
 interface ProcessSnapshot {
@@ -35,6 +36,7 @@ interface ProcessSnapshot {
 
 let eventCounter = 0;
 let childTracker: any = null;
+let socketTracker: any = null;
 let trackedPid: number | null = null;
 let previousTrackedProcess: ProcessSnapshot | null = null;
 let missingTargetReported = false;
@@ -49,6 +51,13 @@ function startChildTracking(pid: number) {
       console.warn('worker stop tracker error:', e);
     }
   }
+  if (socketTracker) {
+    try {
+      socketTracker.stop();
+    } catch (e) {
+      console.warn('worker stop socket tracker error:', e);
+    }
+  }
 
   trackedPid = pid;
   eventCounter = 0;
@@ -57,6 +66,7 @@ function startChildTracking(pid: number) {
   
 
   const startFn = sysInfoModule.startTrackingChildren || sysInfoModule.start_tracking_children;
+  const startSocketFn = sysInfoModule.startTrackingSockets || sysInfoModule.start_tracking_sockets;
   if (typeof startFn !== 'function') {
     eventCounter++;
     emit('data:trace', {
@@ -159,6 +169,41 @@ function startChildTracking(pid: number) {
       });
     });
 
+    if (typeof startSocketFn === 'function') {
+      socketTracker = startSocketFn(pid, (...args: any[]) => {
+        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const payload = args.length > 1 ? (args[1] ?? args[0]) : args[0];
+        const event = payload?.value ?? payload;
+        if (!event) return;
+
+        eventCounter++;
+        const safePid = typeof event?.pid === 'number' ? event.pid : Number(event?.pid) || pid;
+        const protocol = event?.protocol ? String(event.protocol).toUpperCase() : 'SOCKET';
+        const local = event?.local_addr || event?.localAddr || '';
+        const remote = event?.remote_addr || event?.remoteAddr || '';
+        const state = event?.state ? String(event.state) : '';
+        const detailParts = [local, remote ? `-> ${remote}` : '', state].filter(Boolean);
+
+        const traceEvent: TraceEvent = {
+          id: `evt_${String(eventCounter).padStart(3, '0')}`,
+          timestamp,
+          process: 'Socket',
+          pid: safePid,
+          type: 'network',
+          summary: `${protocol} socket activity`,
+          severity: 'low',
+          delta: 'socket',
+          durationMs: Math.floor(Math.random() * 240) + 60,
+          details: detailParts.join(' · '),
+        };
+
+        emit('data:trace', {
+          events: [traceEvent],
+          targetPid: trackedPid,
+        });
+      });
+    }
+
   } catch (e) {
     console.error('worker start tracking error:', e);
     eventCounter++;
@@ -189,7 +234,15 @@ function stopChildTracking() {
       console.warn('worker stop tracker error:', e);
     }
   }
+  if (socketTracker) {
+    try {
+      socketTracker.stop();
+    } catch (e) {
+      console.warn('worker stop socket tracker error:', e);
+    }
+  }
   childTracker = null;
+  socketTracker = null;
   trackedPid = null;
   previousTrackedProcess = null;
   missingTargetReported = false;
@@ -274,7 +327,15 @@ function pushSlow() {
 function pushProcesses() {
   if (!sysInfoModule) return;
   try {
-    const processes = sysInfoModule.getProcesses().slice(0, 200);
+    const processes = sysInfoModule.getProcesses().slice(0, 200).map((process: any) => ({
+      ...process,
+      memoryUsage:
+        typeof process.memoryUsage === 'number'
+          ? process.memoryUsage
+          : typeof process.memory_usage === 'number'
+            ? process.memory_usage
+            : 0,
+    }));
     emit('data:processes', {
       processes,
       processCount: processes.length,

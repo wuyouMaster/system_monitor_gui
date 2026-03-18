@@ -26,6 +26,7 @@ export interface TraceEvent {
   process: string;
   pid: number;
   command?: string;
+  details?: string;
   type: 'cpu' | 'memory' | 'io' | 'network' | 'spawn';
   summary: string;
   severity: 'low' | 'medium' | 'high';

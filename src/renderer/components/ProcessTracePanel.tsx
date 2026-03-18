@@ -39,6 +39,7 @@ interface TraceEvent {
   delta: string;
   durationMs: number;
   command?: string;
+  details?: string;
 }
 
 const TYPE_COLOR: Record<TraceEvent['type'], string> = {
@@ -396,6 +397,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {event.process} · {event.pid} · {event.timestamp}
+                          {event.details ? ` · ${event.details}` : ''}
                         </Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gap={0.5}>
