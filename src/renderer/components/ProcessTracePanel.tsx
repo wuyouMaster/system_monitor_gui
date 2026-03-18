@@ -25,8 +25,6 @@ import {
   Memory as MemoryIcon,
   Visibility as FocusIcon,
   StopCircle as KillIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
 
@@ -55,14 +53,6 @@ const SEVERITY_COLOR: Record<TraceEvent['severity'], string> = {
   low: 'rgba(235,235,245,0.6)',
   medium: '#FFD60A',
   high: '#FF3B30',
-};
-
-const typeIconMap: Record<TraceEvent['type'], React.ReactNode> = {
-  cpu: <SpikeIcon sx={{ fontSize: 16 }} />,
-  memory: <MemoryIcon sx={{ fontSize: 16 }} />,
-  io: <FilterIcon sx={{ fontSize: 16 }} />,
-  network: <FocusIcon sx={{ fontSize: 16 }} />,
-  spawn: <PlayIcon sx={{ fontSize: 16 }} />,
 };
 
 const PANEL_CHIP_SX = {
@@ -400,54 +390,15 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                     }}
                   >
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Box
-                          sx={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 1.5,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: `${TYPE_COLOR[event.type]}20`,
-                            color: TYPE_COLOR[event.type],
-                            border: `1px solid ${TYPE_COLOR[event.type]}55`,
-                          }}
-                        >
-                          {typeIconMap[event.type]}
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {event.summary}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {event.process} · {event.pid} · {event.timestamp}
-                          </Typography>
-                        </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {event.summary}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {event.process} · {event.pid} · {event.timestamp}
+                        </Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gap={0.5}>
-                        {event.command && (
-                          <Tooltip
-                            title={expandedCommands[event.id] ? text.hideCommand : text.showCommand}
-                            placement="left"
-                          >
-                            <IconButton
-                              size="small"
-                              onClick={() => toggleCommand(event.id)}
-                              sx={{
-                                color: 'rgba(235,235,245,0.6)',
-                                p: '3px',
-                                '&:hover': { color: '#32D74B', background: 'rgba(50,215,75,0.12)' },
-                              }}
-                            >
-                              {expandedCommands[event.id] ? (
-                                <ExpandLessIcon sx={{ fontSize: 16 }} />
-                              ) : (
-                                <ExpandMoreIcon sx={{ fontSize: 16 }} />
-                              )}
-                            </IconButton>
-                          </Tooltip>
-                        )}
                         <Chip
                           label={text.severityLabels[event.severity]}
                           size="small"
@@ -503,14 +454,32 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                         </Typography>
                       </Box>
                     )}
-                    <Box display="flex" justifyContent="space-between" mt={1}>
-                      <Typography variant="caption" color="text.secondary">
-                        {text.delta} {event.delta}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {text.duration} {event.durationMs} ms
-                      </Typography>
-                    </Box>
+                    {event.command && (
+                      <Box display="flex" justifyContent="flex-start" mt={1}>
+                        <Tooltip title={expandedCommands[event.id] ? text.hideCommand : text.showCommand}>
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => toggleCommand(event.id)}
+                            sx={{
+                              minWidth: 0,
+                              px: 1.2,
+                              color: 'primary.contrastText',
+                              textTransform: 'none',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              letterSpacing: 0.2,
+                              borderRadius: 1,
+                              border: '1px solid transparent',
+                              background: 'primary.main',
+                              '&:hover': { background: 'primary.dark' },
+                            }}
+                          >
+                            {expandedCommands[event.id] ? text.hideCommand : text.showCommand}
+                          </Button>
+                        </Tooltip>
+                      </Box>
+                    )}
                   </Box>
                 ))}
                 {!hasEvents && (
