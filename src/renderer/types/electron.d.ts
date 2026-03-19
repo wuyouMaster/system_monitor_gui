@@ -8,6 +8,7 @@ declare global {
       startTrace:    (pid: number) => void;
       stopTrace:     () => void;
       killProcess:   (pid: number) => Promise<{ ok?: boolean; error?: string }>;
+      searchProcess: (query: string, requestId?: number) => Promise<{ requestId?: number; results?: any[]; error?: string }>;
       listDir:       (path: string) => Promise<{ entries?: DirEntry[]; error?: string }>;
     };
   }

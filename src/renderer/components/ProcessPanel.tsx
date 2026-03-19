@@ -10,6 +10,7 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -214,28 +215,66 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
   ({ processes, processCount, locale }) => {
     const text = i18n[locale].process;
     const parentRef = useRef<HTMLDivElement>(null);
-    const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<Process[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
     const handleKill = useCallback(async (pid: number) => {
       const result = await window.systemInfo.killProcess(pid);
       if (result?.error) console.error(`Kill PID ${pid} failed:`, result.error);
     }, []);
 
-    const sortedProcesses = useMemo(
-      () => [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage),
-      [processes],
-    );
+  const sortedProcesses = useMemo(
+    () => [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage),
+    [processes],
+  );
 
-    const filteredProcesses = useMemo(() => {
-      const query = searchTerm.trim().toLowerCase();
-      if (!query) return sortedProcesses;
-
-      return sortedProcesses.filter((process) => {
-        const pidMatched = process.pid.toString().includes(query);
-        const nameMatched = process.name.toLowerCase().includes(query);
-        return pidMatched || nameMatched;
+  React.useEffect(() => {
+    const query = searchTerm.trim();
+    if (!query) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+    let cancelled = false;
+    setSearchLoading(true);
+    setSearchError(null);
+    const timer = window.setTimeout(() => {
+      window.systemInfo.searchProcess(query).then((result) => {
+        if (cancelled) return;
+        if (result?.error) {
+          console.warn('process search error:', result.error);
+          setSearchResults([]);
+          setSearchError(result.error);
+          setSearchLoading(false);
+          return;
+        }
+        const items = Array.isArray(result?.results) ? (result.results as Process[]) : [];
+        setSearchResults(items);
+        setSearchLoading(false);
       });
-    }, [searchTerm, sortedProcesses]);
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  const filteredProcesses = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return sortedProcesses;
+    if (searchResults) {
+      return [...searchResults].sort((a, b) => b.memoryUsage - a.memoryUsage);
+    }
+
+    return sortedProcesses.filter((process) => {
+      const pidMatched = process.pid.toString().includes(query);
+      const nameMatched = process.name.toLowerCase().includes(query);
+      return pidMatched || nameMatched;
+    });
+  }, [searchTerm, sortedProcesses, searchResults]);
 
     const rowVirtualizer = useVirtualizer({
       count: filteredProcesses.length,
@@ -298,6 +337,9 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
               ),
               endAdornment: searchTerm.trim() ? (
                 <InputAdornment position="end">
+                  {searchLoading && (
+                    <CircularProgress size={14} sx={{ mr: 0.5, color: 'rgba(235,235,245,0.6)' }} />
+                  )}
                   <IconButton
                     aria-label={text.clearSearchAria}
                     edge="end"
@@ -311,6 +353,12 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
               ) : undefined,
             }}
           />
+
+          {searchError && (
+            <Typography variant="caption" sx={{ color: '#FF9500', mb: 1, display: 'block' }}>
+              {searchError}
+            </Typography>
+          )}
 
           {/* Column headers — sticky, no scroll */}
           <Box

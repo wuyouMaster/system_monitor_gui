@@ -7,6 +7,7 @@ let sysInfoModule = null;
 let fastTimer = null;
 let slowTimer = null;
 let procTimer = null;
+let searchRequestCounter = 0;
 const CPU_SAMPLE_SECS = 500;
 let eventCounter = 0;
 let childTracker = null;
@@ -267,16 +268,14 @@ function pushSlow() {
 function pushProcesses() {
   if (!sysInfoModule) return;
   try {
-    const processes = sysInfoModule.getProcesses().slice(0, 200).map((process2) => ({
-      ...process2,
-      memoryUsage: typeof process2.memoryUsage === "number" ? process2.memoryUsage : typeof process2.memory_usage === "number" ? process2.memory_usage : 0
-    }));
+    const allProcesses = sysInfoModule.getProcesses().map(normalizeProcess);
+    const processes = allProcesses.slice(0, 200);
     emit("data:processes", {
       processes,
-      processCount: processes.length
+      processCount: allProcesses.length
     });
     if (trackedPid !== null) {
-      const target = processes.find((p) => p.pid === trackedPid);
+      const target = allProcesses.find((p) => p.pid === trackedPid);
       if (!target) {
         if (!missingTargetReported) {
           missingTargetReported = true;
@@ -350,6 +349,31 @@ function pushProcesses() {
     console.error("worker pushProcesses error:", e);
   }
 }
+function normalizeProcess(process2) {
+  return {
+    ...process2,
+    memoryUsage: typeof process2.memoryUsage === "number" ? process2.memoryUsage : typeof process2.memory_usage === "number" ? process2.memory_usage : 0
+  };
+}
+function searchProcesses(query) {
+  if (!sysInfoModule) return { results: [], error: "Native module not loaded" };
+  const needle = query.trim();
+  if (!needle) return { results: [] };
+  const processes = sysInfoModule.getProcesses().map(normalizeProcess);
+  if (/^\d+$/.test(needle)) {
+    const pid = Number(needle);
+    const results2 = processes.filter((process2) => process2.pid === pid);
+    return { results: results2 };
+  }
+  let regex;
+  try {
+    regex = new RegExp(needle, "i");
+  } catch (e) {
+    return { results: [], error: (e == null ? void 0 : e.message) ?? String(e) };
+  }
+  const results = processes.filter((process2) => regex.test(String(process2.name || "")));
+  return { results };
+}
 function startDataTimers() {
   stopDataTimers();
   pushFast();
@@ -388,5 +412,10 @@ function stopDataTimers() {
   }
   if (msg.type === "trace:stop") {
     stopChildTracking();
+  }
+  if (msg.type === "process:search") {
+    const requestId = typeof msg.requestId === "number" ? msg.requestId : searchRequestCounter++;
+    const { results, error } = searchProcesses(msg.query ?? "");
+    emit("data:process-search", { requestId, results, error });
   }
 });

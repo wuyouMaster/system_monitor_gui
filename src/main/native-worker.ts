@@ -3,7 +3,7 @@ import path from 'path';
 import { parentPort } from 'worker_threads';
 
 type PushMessage = {
-  channel: 'data:fast' | 'data:slow' | 'data:processes' | 'data:trace';
+  channel: 'data:fast' | 'data:slow' | 'data:processes' | 'data:trace' | 'data:process-search';
   payload: unknown;
 };
 
@@ -11,6 +11,7 @@ let sysInfoModule: any = null;
 let fastTimer: ReturnType<typeof setInterval> | null = null;
 let slowTimer: ReturnType<typeof setInterval> | null = null;
 let procTimer: ReturnType<typeof setInterval> | null = null;
+let searchRequestCounter = 0;
 
 const CPU_SAMPLE_SECS = 500;
 
@@ -333,22 +334,15 @@ function pushSlow() {
 function pushProcesses() {
   if (!sysInfoModule) return;
   try {
-    const processes = sysInfoModule.getProcesses().slice(0, 200).map((process: any) => ({
-      ...process,
-      memoryUsage:
-        typeof process.memoryUsage === 'number'
-          ? process.memoryUsage
-          : typeof process.memory_usage === 'number'
-            ? process.memory_usage
-            : 0,
-    }));
+    const allProcesses = sysInfoModule.getProcesses().map(normalizeProcess);
+    const processes = allProcesses.slice(0, 200);
     emit('data:processes', {
       processes,
-      processCount: processes.length,
+      processCount: allProcesses.length,
     });
 
     if (trackedPid !== null) {
-      const target = processes.find((p: any) => p.pid === trackedPid);
+      const target = allProcesses.find((p: any) => p.pid === trackedPid);
       if (!target) {
         if (!missingTargetReported) {
           missingTargetReported = true;
@@ -430,6 +424,41 @@ function pushProcesses() {
   }
 }
 
+function normalizeProcess(process: any) {
+  return {
+    ...process,
+    memoryUsage:
+      typeof process.memoryUsage === 'number'
+        ? process.memoryUsage
+        : typeof process.memory_usage === 'number'
+          ? process.memory_usage
+          : 0,
+  };
+}
+
+function searchProcesses(query: string) {
+  if (!sysInfoModule) return { results: [], error: 'Native module not loaded' };
+  const needle = query.trim();
+  if (!needle) return { results: [] };
+
+  const processes = sysInfoModule.getProcesses().map(normalizeProcess);
+  if (/^\d+$/.test(needle)) {
+    const pid = Number(needle);
+    const results = processes.filter((process: any) => process.pid === pid);
+    return { results };
+  }
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(needle, 'i');
+  } catch (e: any) {
+    return { results: [], error: e?.message ?? String(e) };
+  }
+
+  const results = processes.filter((process: any) => regex.test(String(process.name || '')));
+  return { results };
+}
+
 function startDataTimers() {
   stopDataTimers();
   pushFast();
@@ -453,7 +482,7 @@ function stopDataTimers() {
   procTimer = null;
 }
 
-parentPort?.on('message', (msg: { type: 'start' | 'stop' | 'trace:start' | 'trace:stop'; pid?: number }) => {
+parentPort?.on('message', (msg: { type: 'start' | 'stop' | 'trace:start' | 'trace:stop' | 'process:search'; pid?: number; query?: string; requestId?: number }) => {
   if (msg.type === 'start') {
     if (loadNativeModule()) startDataTimers();
     return;
@@ -470,5 +499,10 @@ parentPort?.on('message', (msg: { type: 'start' | 'stop' | 'trace:start' | 'trac
   }
   if (msg.type === 'trace:stop') {
     stopChildTracking();
+  }
+  if (msg.type === 'process:search') {
+    const requestId = typeof msg.requestId === 'number' ? msg.requestId : searchRequestCounter++;
+    const { results, error } = searchProcesses(msg.query ?? '');
+    emit('data:process-search', { requestId, results, error });
   }
 });

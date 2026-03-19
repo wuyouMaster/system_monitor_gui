@@ -122,5 +122,6 @@ contextBridge.exposeInMainWorld('systemInfo', {
   startTrace:      (pid: number) => ipcRenderer.send('trace:start', { pid }),
   stopTrace:       () => ipcRenderer.send('trace:stop'),
   killProcess:     (pid: number) => ipcRenderer.invoke('kill-process', pid),
+  searchProcess:   (query: string, requestId?: number) => ipcRenderer.invoke('process-search', { query, requestId }),
   listDir:         (path: string) => ipcRenderer.invoke('list-dir', path),
 });

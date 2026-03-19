@@ -109,7 +109,6 @@ function createWindow() {
 
   const isDev = process.env.VITE_DEV_SERVER_URL;
   if (isDev) {
-    win.webContents.openDevTools();
     win.loadURL(process.env.VITE_DEV_SERVER_URL as string);
   } else {
     win.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -164,6 +163,23 @@ ipcMain.on('trace:start', (_, payload: { pid: number }) => {
 ipcMain.on('trace:stop', () => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: 'trace:stop' });
+});
+
+ipcMain.handle('process-search', async (_, payload: { query: string; requestId?: number }) => {
+  if (!nativeWorker) return { error: 'Native worker not running' };
+  return new Promise((resolve) => {
+    const handler = (msg: { channel?: string; payload?: any }) => {
+      if (msg.channel !== 'data:process-search') return;
+      const response = msg.payload ?? {};
+      if (typeof payload.requestId === 'number' && response.requestId !== payload.requestId) {
+        return;
+      }
+      nativeWorker?.off('message', handler);
+      resolve(response);
+    };
+    nativeWorker.on('message', handler);
+    nativeWorker.postMessage({ type: 'process:search', query: payload.query, requestId: payload.requestId });
+  });
 });
 
 app.whenReady().then(() => {

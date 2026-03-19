@@ -94,7 +94,6 @@ function createWindow() {
   });
   const isDev = process.env.VITE_DEV_SERVER_URL;
   if (isDev) {
-    win.webContents.openDevTools();
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
@@ -139,6 +138,22 @@ electron.ipcMain.on("trace:start", (_, payload) => {
 electron.ipcMain.on("trace:stop", () => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: "trace:stop" });
+});
+electron.ipcMain.handle("process-search", async (_, payload) => {
+  if (!nativeWorker) return { error: "Native worker not running" };
+  return new Promise((resolve) => {
+    const handler = (msg) => {
+      if (msg.channel !== "data:process-search") return;
+      const response = msg.payload ?? {};
+      if (typeof payload.requestId === "number" && response.requestId !== payload.requestId) {
+        return;
+      }
+      nativeWorker == null ? void 0 : nativeWorker.off("message", handler);
+      resolve(response);
+    };
+    nativeWorker.on("message", handler);
+    nativeWorker.postMessage({ type: "process:search", query: payload.query, requestId: payload.requestId });
+  });
 });
 electron.app.whenReady().then(() => {
   createWindow();

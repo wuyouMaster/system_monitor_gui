@@ -26,5 +26,6 @@ electron.contextBridge.exposeInMainWorld("systemInfo", {
   startTrace: (pid) => electron.ipcRenderer.send("trace:start", { pid }),
   stopTrace: () => electron.ipcRenderer.send("trace:stop"),
   killProcess: (pid) => electron.ipcRenderer.invoke("kill-process", pid),
+  searchProcess: (query, requestId) => electron.ipcRenderer.invoke("process-search", { query, requestId }),
   listDir: (path) => electron.ipcRenderer.invoke("list-dir", path)
 });
