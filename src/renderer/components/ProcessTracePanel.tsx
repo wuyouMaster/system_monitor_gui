@@ -15,7 +15,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, ResponsiveContainer, Legend } from 'recharts';
 import {
   Timeline as TraceIcon,
   PlayArrow as PlayIcon,
@@ -47,6 +47,13 @@ interface TraceMemorySample {
   pid: number;
   timestamp: string;
   memoryBytes: number;
+}
+
+interface TraceIoSample {
+  pid: number;
+  timestamp: string;
+  readBytes: number;
+  writeBytes: number;
 }
 
 const TYPE_COLOR: Record<TraceEvent['type'], string> = {
@@ -104,12 +111,20 @@ const STATUS_ROW_SX = {
   gap: 1,
 } as const;
 
+function formatIoBytes(bytes: number): { value: number; unit: string } {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 10000) return { value: mb / 1024, unit: 'GB' };
+  if (mb >= 1) return { value: mb, unit: 'MB' };
+  return { value: bytes / 1024, unit: 'KB' };
+}
+
 type TraceCache = {
   events: TraceEvent[];
   activePid: number | null;
   isTracing: boolean;
   pidInput: string;
   memorySamples: TraceMemorySample[];
+  ioSamples: TraceIoSample[];
 };
 
 const traceCache: TraceCache = {
@@ -118,6 +133,7 @@ const traceCache: TraceCache = {
   isTracing: false,
   pidInput: '',
   memorySamples: [],
+  ioSamples: [],
 };
 
 export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ locale }) => {
@@ -125,6 +141,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
+  const [ioSamples, setIoSamples] = useState<TraceIoSample[]>(traceCache.ioSamples);
   const [pidInput, setPidInput] = useState(traceCache.pidInput);
   const [activePid, setActivePid] = useState<number | null>(traceCache.activePid);
   const [isTracing, setIsTracing] = useState(traceCache.isTracing);
@@ -143,6 +160,8 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         setCurrentPage(1);
         traceCache.memorySamples = [];
         setMemorySamples([]);
+        traceCache.ioSamples = [];
+        setIoSamples([]);
       }
       if (typeof data.targetPid === 'number') {
         traceCache.activePid = data.targetPid;
@@ -165,6 +184,14 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
           const next = [...prev, data.memorySample as TraceMemorySample];
           const trimmed = next.slice(-80);
           traceCache.memorySamples = trimmed;
+          return trimmed;
+        });
+      }
+      if (data.ioSample) {
+        setIoSamples((prev) => {
+          const next = [...prev, data.ioSample as TraceIoSample];
+          const trimmed = next.slice(-80);
+          traceCache.ioSamples = trimmed;
           return trimmed;
         });
       }
@@ -248,6 +275,35 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     if (!last) return null;
     return last.memoryBytes / (1024 * 1024);
   }, [memorySamples]);
+
+  const ioChartData = useMemo(() => {
+    if (ioSamples.length === 0) return [];
+    const maxBytes = Math.max(
+      ...ioSamples.map((s) => Math.max(s.readBytes, s.writeBytes)),
+    );
+    const { unit } = formatIoBytes(maxBytes);
+    const divisor = unit === 'GB' ? 1024 * 1024 * 1024 : unit === 'MB' ? 1024 * 1024 : 1024;
+    return ioSamples.map((sample, index) => ({
+      index,
+      read: sample.readBytes / divisor,
+      write: sample.writeBytes / divisor,
+    }));
+  }, [ioSamples]);
+  const ioChartUnit = useMemo(() => {
+    if (ioSamples.length === 0) return 'MB';
+    const maxBytes = Math.max(
+      ...ioSamples.map((s) => Math.max(s.readBytes, s.writeBytes)),
+    );
+    return formatIoBytes(maxBytes).unit;
+  }, [ioSamples]);
+  const latestIo = useMemo(() => {
+    const last = ioSamples[ioSamples.length - 1];
+    if (!last) return null;
+    return {
+      read: formatIoBytes(last.readBytes),
+      write: formatIoBytes(last.writeBytes),
+    };
+  }, [ioSamples]);
 
   return (
     <Card sx={{ height: '100%', border: 'none' }}>
@@ -432,6 +488,69 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                             strokeWidth={2}
                             dot={false}
                             isAnimationActive={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Box>
+                ) : selectedType === 'io' ? (
+                  <Box
+                    sx={{
+                      borderRadius: 2,
+                      p: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background:
+                        'linear-gradient(135deg, rgba(88,86,214,0.08) 0%, rgba(255,255,255,0.01) 100%)',
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {text.ioTrend}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        ({ioChartUnit})
+                      </Typography>
+                      <Box display="flex" gap={1.5}>
+                        {latestIo && (
+                          <>
+                            <Typography variant="caption" sx={{ color: '#34C759' }}>
+                              {text.read} {latestIo.read.value.toFixed(1)} {latestIo.read.unit}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#FF9500' }}>
+                              {text.write} {latestIo.write.value.toFixed(1)} {latestIo.write.unit}
+                            </Typography>
+                          </>
+                        )}
+                        {!latestIo && (
+                          <Typography variant="caption" color="text.secondary">
+                            {text.noEvents}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ height: 220 }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={ioChartData}>
+                          <Line
+                            type="monotone"
+                            dataKey="read"
+                            stroke="#34C759"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            name={text.read}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="write"
+                            stroke="#FF9500"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            name={text.write}
+                          />
+                          <Legend
+                            wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
                           />
                         </LineChart>
                       </ResponsiveContainer>

@@ -99,6 +99,9 @@ type I18nSchema = {
     start: string;
     pause: string;
     killTooltip: (pid: number) => string;
+    ioTrend: string;
+    read: string;
+    write: string;
   };
 };
 
@@ -180,6 +183,9 @@ export const i18n: Record<Locale, I18nSchema> = {
       alerts: 'Alerts',
       alertsHint: 'High severity in last 5 min',
       memoryTrend: 'Memory trend',
+      ioTrend: 'Disk I/O trend',
+      read: 'Read',
+      write: 'Write',
       status: 'Status',
       emptyTitle: 'Start a trace to see activity',
       emptyHint: 'Enter a PID and click start to capture process activity in real time.',
@@ -297,6 +303,9 @@ export const i18n: Record<Locale, I18nSchema> = {
       alerts: '告警',
       alertsHint: '近 5 分钟高严重度',
       memoryTrend: '内存曲线',
+      ioTrend: '磁盘 I/O 曲线',
+      read: '读取',
+      write: '写入',
       status: '状态',
       emptyTitle: '开始追踪以查看活动',
       emptyHint: '输入 PID 并点击开始，即可实时捕获进程活动。',

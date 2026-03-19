@@ -338,10 +338,27 @@ function pushProcesses() {
           timestamp,
           memoryBytes: snapshot.memoryUsage
         };
+        let ioSample;
+        try {
+          const getIoFn = sysInfoModule.jsGetProcessIo || sysInfoModule.js_get_process_io;
+          if (typeof getIoFn === "function") {
+            const io = getIoFn(snapshot.pid);
+            if (io) {
+              ioSample = {
+                pid: snapshot.pid,
+                timestamp,
+                readBytes: typeof io.readBytes === "number" ? io.readBytes : typeof io.read_bytes === "number" ? io.read_bytes : 0,
+                writeBytes: typeof io.writeBytes === "number" ? io.writeBytes : typeof io.write_bytes === "number" ? io.write_bytes : 0
+              };
+            }
+          }
+        } catch {
+        }
         emit("data:trace", {
           events: [],
           targetPid: trackedPid,
-          memorySample
+          memorySample,
+          ioSample
         });
       }
     }

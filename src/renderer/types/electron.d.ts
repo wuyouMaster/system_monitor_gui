@@ -4,7 +4,7 @@ declare global {
       onFastData:    (cb: (d: { memory: any; cpu: any; cpuUsage: number[] }) => void) => () => void;
       onSlowData:    (cb: (d: { disks: any[]; socketSummary: any; connections: any[] }) => void) => () => void;
       onProcessData: (cb: (d: { processes: any[]; processCount: number }) => void) => () => void;
-      onTraceData:   (cb: (d: { events: TraceEvent[]; reset?: boolean; targetPid?: number | null; memorySample?: TraceMemorySample }) => void) => () => void;
+      onTraceData:   (cb: (d: { events: TraceEvent[]; reset?: boolean; targetPid?: number | null; memorySample?: TraceMemorySample; ioSample?: TraceIoSample }) => void) => () => void;
       startTrace:    (pid: number) => void;
       stopTrace:     () => void;
       killProcess:   (pid: number) => Promise<{ ok?: boolean; error?: string }>;
@@ -39,6 +39,13 @@ export interface TraceMemorySample {
   pid: number;
   timestamp: string;
   memoryBytes: number;
+}
+
+export interface TraceIoSample {
+  pid: number;
+  timestamp: string;
+  readBytes: number;
+  writeBytes: number;
 }
 
 export {};
