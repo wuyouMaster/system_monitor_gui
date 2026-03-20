@@ -75,6 +75,21 @@ type I18nSchema = {
     health: string;
     alerts: string;
     alertsHint: string;
+    memoryTrend: string;
+    status: string;
+    emptyTitle: string;
+    emptyHint: string;
+    controlsHint: string;
+    session: string;
+    activePid: string;
+    noActive: string;
+    sessionHint: string;
+    idleDetail: string;
+    liveDetail: (pid: number) => string;
+    pausedDetail: (pid: number) => string;
+    commandLabel: string;
+    showCommand: string;
+    hideCommand: string;
     searchPlaceholder: string;
     typeLabels: {
       all: string;
@@ -83,6 +98,7 @@ type I18nSchema = {
       io: string;
       network: string;
       spawn: string;
+      queue: string;
     };
     severityLabels: {
       low: string;
@@ -97,11 +113,19 @@ type I18nSchema = {
     pageLabel: (current: number, total: number) => string;
     controls: string;
     start: string;
+    paused: string;
     pause: string;
     killTooltip: (pid: number) => string;
     ioTrend: string;
     read: string;
     write: string;
+    netTrend: string;
+    sent: string;
+    recv: string;
+    sockets: string;
+    queueTrend: string;
+    sendQueue: string;
+    recvQueue: string;
   };
 };
 
@@ -172,7 +196,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       total: 'total',
       noProcessInfo: 'No process information available',
       noMatchingProcesses: 'No matching processes',
-      killTooltip: (pid) => `Kill PID ${pid}`,
+      killTooltip: (pid: number) => `Kill PID ${pid}`,
     },
     trace: {
       title: 'Process Trace',
@@ -186,6 +210,13 @@ export const i18n: Record<Locale, I18nSchema> = {
       ioTrend: 'Disk I/O trend',
       read: 'Read',
       write: 'Write',
+      netTrend: 'Network I/O trend',
+      sent: 'Sent',
+      recv: 'Recv',
+      sockets: 'sockets',
+      queueTrend: 'Socket queue trend',
+      sendQueue: 'Send Q',
+      recvQueue: 'Recv Q',
       status: 'Status',
       emptyTitle: 'Start a trace to see activity',
       emptyHint: 'Enter a PID and click start to capture process activity in real time.',
@@ -195,8 +226,11 @@ export const i18n: Record<Locale, I18nSchema> = {
       noActive: 'None',
       sessionHint: 'Captured events are kept locally on this screen.',
       idleDetail: 'No trace has started',
-      liveDetail: (pid) => (pid ? `Streaming from PID ${pid}` : 'Streaming'),
-      pausedDetail: (pid) => `Paused at PID ${pid}`,
+      liveDetail: (pid: number) => (pid ? `Streaming from PID ${pid}` : 'Streaming'),
+      pausedDetail: (pid: number) => `Paused at PID ${pid}`,
+      commandLabel: 'Command',
+      showCommand: 'Show command',
+      hideCommand: 'Hide command',
       searchPlaceholder: 'Search process or event details',
       typeLabels: {
         all: 'All types',
@@ -205,6 +239,7 @@ export const i18n: Record<Locale, I18nSchema> = {
         io: 'Disk I/O',
         network: 'Network',
         spawn: 'Spawn',
+        queue: 'Queue',
       },
       severityLabels: {
         low: 'Low',
@@ -220,9 +255,6 @@ export const i18n: Record<Locale, I18nSchema> = {
       controls: 'Capture controls',
       start: 'Start',
       pause: 'Pause',
-      showCommand: 'Show preview',
-      hideCommand: 'Hide preview',
-      commandLabel: 'Preview',
       killTooltip: (pid) => `Kill PID ${pid}`,
     },
   },
@@ -292,7 +324,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       total: '总计',
       noProcessInfo: '暂无进程信息',
       noMatchingProcesses: '没有匹配的进程',
-      killTooltip: (pid) => `终止进程 PID ${pid}`,
+      killTooltip: (pid: number) => `终止进程 PID ${pid}`,
     },
     trace: {
       title: '进程追踪',
@@ -306,6 +338,13 @@ export const i18n: Record<Locale, I18nSchema> = {
       ioTrend: '磁盘 I/O 曲线',
       read: '读取',
       write: '写入',
+      netTrend: '网络 I/O 曲线',
+      sent: '发送',
+      recv: '接收',
+      sockets: '个连接',
+      queueTrend: 'Socket 队列曲线',
+      sendQueue: '发送队列',
+      recvQueue: '接收队列',
       status: '状态',
       emptyTitle: '开始追踪以查看活动',
       emptyHint: '输入 PID 并点击开始，即可实时捕获进程活动。',
@@ -315,8 +354,11 @@ export const i18n: Record<Locale, I18nSchema> = {
       noActive: '无',
       sessionHint: '当前页面将保留已捕获的事件。',
       idleDetail: '尚未开始追踪',
-      liveDetail: (pid) => (pid ? `正在追踪 PID ${pid}` : '正在追踪'),
-      pausedDetail: (pid) => `已暂停于 PID ${pid}`,
+      liveDetail: (pid: number) => (pid ? `正在追踪 PID ${pid}` : '正在追踪'),
+      pausedDetail: (pid: number) => `已暂停于 PID ${pid}`,
+      commandLabel: '命令',
+      showCommand: '显示命令',
+      hideCommand: '隐藏命令',
       searchPlaceholder: '搜索进程或事件详情',
       typeLabels: {
         all: '全部类型',
@@ -325,6 +367,7 @@ export const i18n: Record<Locale, I18nSchema> = {
         io: '磁盘 I/O',
         network: '网络',
         spawn: '创建进程',
+        queue: '队列',
       },
       severityLabels: {
         low: '低',
@@ -340,9 +383,6 @@ export const i18n: Record<Locale, I18nSchema> = {
       controls: '采集控制',
       start: '开始',
       pause: '暂停',
-      showCommand: '展开预览',
-      hideCommand: '收起预览',
-      commandLabel: '预览',
       killTooltip: (pid) => `终止进程 PID ${pid}`,
     },
   },

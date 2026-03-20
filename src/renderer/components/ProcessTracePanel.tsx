@@ -22,9 +22,6 @@ import {
   Pause as PauseIcon,
   FilterAlt as FilterIcon,
   Search as SearchIcon,
-  Bolt as SpikeIcon,
-  Memory as MemoryIcon,
-  Visibility as FocusIcon,
   StopCircle as KillIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
@@ -56,13 +53,12 @@ interface TraceIoSample {
   writeBytes: number;
 }
 
-const TYPE_COLOR: Record<TraceEvent['type'], string> = {
-  cpu: '#FF9500',
-  memory: '#5AC8FA',
-  io: '#5856D6',
-  network: '#34C759',
-  spawn: '#FF2D55',
-};
+interface TraceQueueSample {
+  timestamp: string;
+  totalRecvQueue: number;
+  totalSendQueue: number;
+  socketCount: number;
+}
 
 const SEVERITY_COLOR: Record<TraceEvent['severity'], string> = {
   low: 'rgba(235,235,245,0.6)',
@@ -125,6 +121,8 @@ type TraceCache = {
   pidInput: string;
   memorySamples: TraceMemorySample[];
   ioSamples: TraceIoSample[];
+  socketSamples: Array<{ sent: number; recv: number; count: number }>;
+  queueSamples: TraceQueueSample[];
 };
 
 const traceCache: TraceCache = {
@@ -134,6 +132,8 @@ const traceCache: TraceCache = {
   pidInput: '',
   memorySamples: [],
   ioSamples: [],
+  socketSamples: [],
+  queueSamples: [],
 };
 
 export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ locale }) => {
@@ -142,6 +142,8 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [selectedType, setSelectedType] = useState('all');
   const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
   const [ioSamples, setIoSamples] = useState<TraceIoSample[]>(traceCache.ioSamples);
+  const [socketSamples, setSocketSamples] = useState(traceCache.socketSamples);
+  const [queueSamples, setQueueSamples] = useState<TraceQueueSample[]>(traceCache.queueSamples);
   const [pidInput, setPidInput] = useState(traceCache.pidInput);
   const [activePid, setActivePid] = useState<number | null>(traceCache.activePid);
   const [isTracing, setIsTracing] = useState(traceCache.isTracing);
@@ -151,7 +153,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const cacheLimit = 500;
   const pageSize = 8;
 
-  const typeOptions = useMemo(() => ['all', 'cpu', 'memory', 'io', 'network', 'spawn'], []);
+  const typeOptions = useMemo(() => ['all', 'cpu', 'memory', 'io', 'network', 'spawn', 'queue'], []);
 
   useEffect(() => {
     const unsubTrace = window.systemInfo.onTraceData((data) => {
@@ -162,6 +164,10 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         setMemorySamples([]);
         traceCache.ioSamples = [];
         setIoSamples([]);
+        traceCache.socketSamples = [];
+        setSocketSamples([]);
+        traceCache.queueSamples = [];
+        setQueueSamples([]);
       }
       if (typeof data.targetPid === 'number') {
         traceCache.activePid = data.targetPid;
@@ -172,8 +178,12 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
       if (data.targetPid === null) {
         traceCache.activePid = null;
         traceCache.isTracing = false;
+        traceCache.socketSamples = [];
+        traceCache.queueSamples = [];
         setActivePid(null);
         setIsTracing(false);
+        setSocketSamples([]);
+        setQueueSamples([]);
       }
       if (data.events.length > 0) {
         const newEvents = [...data.events, ...traceCache.events];
@@ -201,6 +211,61 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
       unsubTrace();
     };
   }, []);
+
+  // Poll socket stats when tracing is active
+  useEffect(() => {
+    if (!isTracing || !activePid) return;
+    const timer = setInterval(() => {
+      window.systemInfo
+        .getProcessSocketStats(activePid)
+        .then((stats) => {
+          console.log('[SocketStats]', { pid: activePid, stats, count: Array.isArray(stats) ? stats.length : 'not array' });
+          if (!Array.isArray(stats) || stats.length === 0) return;
+          const totalSent = stats.reduce((sum, s) => sum + (s.bytesSent || 0), 0);
+          const totalRecv = stats.reduce((sum, s) => sum + (s.bytesReceived || 0), 0);
+          setSocketSamples((prev) => {
+            const next = [...prev, { sent: totalSent, recv: totalRecv, count: stats.length }].slice(-80);
+            traceCache.socketSamples = next;
+            return next;
+          });
+        })
+        .catch((err) => {
+          console.error('[SocketStats] Error:', err);
+        });
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [isTracing, activePid]);
+
+  // Poll socket queue data when tracing is active
+  useEffect(() => {
+    if (!isTracing || !activePid) return;
+    const timer = setInterval(() => {
+      window.systemInfo
+        .getProcessSocketQueues(activePid)
+        .then((queues) => {
+          if (!Array.isArray(queues) || queues.length === 0) return;
+          const totalRecvQueue = queues.reduce((sum, q) => sum + (q.recvQueueBytes || 0), 0);
+          const totalSendQueue = queues.reduce((sum, q) => sum + (q.sendQueueBytes || 0), 0);
+          setQueueSamples((prev) => {
+            const next = [
+              ...prev,
+              {
+                timestamp: new Date().toLocaleTimeString(),
+                totalRecvQueue,
+                totalSendQueue,
+                socketCount: queues.length,
+              },
+            ].slice(-80);
+            traceCache.queueSamples = next;
+            return next;
+          });
+        })
+        .catch((err) => {
+          console.error('[QueueStats] Error:', err);
+        });
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [isTracing, activePid]);
 
   const handleStart = () => {
     const pid = Number(pidInput);
@@ -257,7 +322,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const statusLabel = isTracing ? text.live : text.paused;
   const statusColor = isTracing ? '#32D74B' : 'rgba(235,235,245,0.6)';
   const statusDetail = isTracing
-    ? text.liveDetail(activePid)
+    ? text.liveDetail(activePid ?? 0)
     : activePid
       ? text.pausedDetail(activePid)
       : text.idleDetail;
@@ -304,6 +369,68 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
       write: formatIoBytes(last.writeBytes),
     };
   }, [ioSamples]);
+
+  const socketChartData = useMemo(() => {
+    if (socketSamples.length === 0) return [];
+    const maxBytes = Math.max(
+      ...socketSamples.map((s) => Math.max(s.sent, s.recv)),
+    );
+    const { unit } = formatIoBytes(maxBytes);
+    const divisor = unit === 'GB' ? 1024 * 1024 * 1024 : unit === 'MB' ? 1024 * 1024 : 1024;
+    return socketSamples.map((sample, index) => ({
+      index,
+      sent: sample.sent / divisor,
+      recv: sample.recv / divisor,
+    }));
+  }, [socketSamples]);
+  const socketChartUnit = useMemo(() => {
+    if (socketSamples.length === 0) return 'MB';
+    const maxBytes = Math.max(
+      ...socketSamples.map((s) => Math.max(s.sent, s.recv)),
+    );
+    return formatIoBytes(maxBytes).unit;
+  }, [socketSamples]);
+  const latestSocket = useMemo(() => {
+    const last = socketSamples[socketSamples.length - 1];
+    if (!last) return null;
+    return {
+      sent: formatIoBytes(last.sent),
+      recv: formatIoBytes(last.recv),
+      count: last.count,
+    };
+  }, [socketSamples]);
+
+  const queueChartData = useMemo(() => {
+    if (queueSamples.length === 0) return [];
+    const maxBytes = Math.max(
+      ...queueSamples.map((s) => Math.max(s.totalRecvQueue, s.totalSendQueue)),
+      1,
+    );
+    const { unit } = formatIoBytes(maxBytes);
+    const divisor = unit === 'GB' ? 1024 * 1024 * 1024 : unit === 'MB' ? 1024 * 1024 : 1024;
+    return queueSamples.map((sample, index) => ({
+      index,
+      recvQ: sample.totalRecvQueue / divisor,
+      sendQ: sample.totalSendQueue / divisor,
+    }));
+  }, [queueSamples]);
+  const queueChartUnit = useMemo(() => {
+    if (queueSamples.length === 0) return 'KB';
+    const maxBytes = Math.max(
+      ...queueSamples.map((s) => Math.max(s.totalRecvQueue, s.totalSendQueue)),
+      1,
+    );
+    return formatIoBytes(maxBytes).unit;
+  }, [queueSamples]);
+  const latestQueue = useMemo(() => {
+    const last = queueSamples[queueSamples.length - 1];
+    if (!last) return null;
+    return {
+      recvQ: formatIoBytes(last.totalRecvQueue),
+      sendQ: formatIoBytes(last.totalSendQueue),
+      socketCount: last.socketCount,
+    };
+  }, [queueSamples]);
 
   return (
     <Card sx={{ height: '100%', border: 'none' }}>
@@ -555,6 +682,134 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                         </LineChart>
                       </ResponsiveContainer>
                     </Box>
+                  </Box>
+                ) : selectedType === 'network' ? (
+                  <Box
+                    sx={{
+                      borderRadius: 2,
+                      p: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background:
+                        'linear-gradient(135deg, rgba(52,199,89,0.08) 0%, rgba(255,255,255,0.01) 100%)',
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {text.netTrend}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        ({socketChartUnit})
+                      </Typography>
+                      <Box display="flex" gap={1.5}>
+                        {latestSocket && (
+                          <>
+                            <Typography variant="caption" sx={{ color: '#32D74B' }}>
+                              {text.sent} {latestSocket.sent.value.toFixed(1)} {latestSocket.sent.unit}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#5AC8FA' }}>
+                              {text.recv} {latestSocket.recv.value.toFixed(1)} {latestSocket.recv.unit}
+                            </Typography>
+                          </>
+                        )}
+                        {!latestSocket && (
+                          <Typography variant="caption" color="text.secondary">
+                            {text.noEvents}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ height: 220 }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={socketChartData}>
+                          <Line
+                            type="monotone"
+                            dataKey="sent"
+                            stroke="#32D74B"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            name={text.sent}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="recv"
+                            stroke="#5AC8FA"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            name={text.recv}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      {latestSocket?.count ?? 0} {text.sockets}
+                    </Typography>
+                  </Box>
+                ) : selectedType === 'queue' ? (
+                  <Box
+                    sx={{
+                      borderRadius: 2,
+                      p: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background:
+                        'linear-gradient(135deg, rgba(255,159,10,0.08) 0%, rgba(255,255,255,0.01) 100%)',
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {text.queueTrend}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        ({queueChartUnit})
+                      </Typography>
+                      <Box display="flex" gap={1.5}>
+                        {latestQueue && (
+                          <>
+                            <Typography variant="caption" sx={{ color: '#FF9F0A' }}>
+                              {text.sendQueue} {latestQueue.sendQ.value.toFixed(1)} {latestQueue.sendQ.unit}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#BF5AF2' }}>
+                              {text.recvQueue} {latestQueue.recvQ.value.toFixed(1)} {latestQueue.recvQ.unit}
+                            </Typography>
+                          </>
+                        )}
+                        {!latestQueue && (
+                          <Typography variant="caption" color="text.secondary">
+                            {text.noEvents}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ height: 220 }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={queueChartData}>
+                          <Line
+                            type="monotone"
+                            dataKey="sendQ"
+                            stroke="#FF9F0A"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            name={text.sendQueue}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="recvQ"
+                            stroke="#BF5AF2"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                            name={text.recvQueue}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      {latestQueue?.socketCount ?? 0} {text.sockets}
+                    </Typography>
                   </Box>
                 ) : (
                   <>

@@ -155,6 +155,28 @@ ipcMain.handle('kill-process', async (_, pid: number) => {
   }
 });
 
+ipcMain.handle('get-process-socket-stats', async (_, pid: number) => {
+  if (!sysInfoModule) return [];
+  try {
+    const fn = sysInfoModule.jsGetProcessSocketStats || sysInfoModule.js_get_process_socket_stats;
+    if (typeof fn !== 'function') return [];
+    return fn(pid);
+  } catch {
+    return [];
+  }
+});
+
+ipcMain.handle('get-process-socket-queues', async (_, pid: number) => {
+  if (!sysInfoModule) return [];
+  try {
+    const fn = sysInfoModule.jsGetProcessSocketQueues || sysInfoModule.js_get_process_socket_queues;
+    if (typeof fn !== 'function') return [];
+    return fn(pid);
+  } catch {
+    return [];
+  }
+});
+
 ipcMain.on('trace:start', (_, payload: { pid: number }) => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: 'trace:start', pid: payload.pid });

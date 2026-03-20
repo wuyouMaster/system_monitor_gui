@@ -10,6 +10,8 @@ declare global {
       killProcess:   (pid: number) => Promise<{ ok?: boolean; error?: string }>;
       searchProcess: (query: string, requestId?: number) => Promise<{ requestId?: number; results?: any[]; error?: string }>;
       listDir:       (path: string) => Promise<{ entries?: DirEntry[]; error?: string }>;
+      getProcessSocketStats: (pid: number) => Promise<SocketStatItem[]>;
+      getProcessSocketQueues: (pid: number) => Promise<SocketQueueItem[]>;
     };
   }
 }
@@ -46,6 +48,29 @@ export interface TraceIoSample {
   timestamp: string;
   readBytes: number;
   writeBytes: number;
+}
+
+export interface SocketStatItem {
+  pid: number;
+  fd: number;
+  protocol: string;
+  localAddr: string;
+  remoteAddr: string | null;
+  bytesSent: number;
+  bytesReceived: number;
+}
+
+export interface SocketQueueItem {
+  pid: number;
+  fd: number;
+  protocol: string;
+  localAddr: string;
+  remoteAddr: string | null;
+  state: string;
+  recvQueueBytes: number;
+  recvQueueHiwat: number;
+  sendQueueBytes: number;
+  sendQueueHiwat: number;
 }
 
 export {};

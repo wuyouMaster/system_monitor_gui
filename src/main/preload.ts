@@ -124,4 +124,6 @@ contextBridge.exposeInMainWorld('systemInfo', {
   killProcess:     (pid: number) => ipcRenderer.invoke('kill-process', pid),
   searchProcess:   (query: string, requestId?: number) => ipcRenderer.invoke('process-search', { query, requestId }),
   listDir:         (path: string) => ipcRenderer.invoke('list-dir', path),
+  getProcessSocketStats: (pid: number) => ipcRenderer.invoke('get-process-socket-stats', pid),
+  getProcessSocketQueues: (pid: number) => ipcRenderer.invoke('get-process-socket-queues', pid),
 });

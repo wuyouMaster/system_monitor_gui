@@ -131,6 +131,26 @@ electron.ipcMain.handle("kill-process", async (_, pid) => {
     return { error: (e == null ? void 0 : e.message) ?? String(e) };
   }
 });
+electron.ipcMain.handle("get-process-socket-stats", async (_, pid) => {
+  if (!sysInfoModule) return [];
+  try {
+    const fn = sysInfoModule.jsGetProcessSocketStats || sysInfoModule.js_get_process_socket_stats;
+    if (typeof fn !== "function") return [];
+    return fn(pid);
+  } catch {
+    return [];
+  }
+});
+electron.ipcMain.handle("get-process-socket-queues", async (_, pid) => {
+  if (!sysInfoModule) return [];
+  try {
+    const fn = sysInfoModule.jsGetProcessSocketQueues || sysInfoModule.js_get_process_socket_queues;
+    if (typeof fn !== "function") return [];
+    return fn(pid);
+  } catch {
+    return [];
+  }
+});
 electron.ipcMain.on("trace:start", (_, payload) => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: "trace:start", pid: payload.pid });
