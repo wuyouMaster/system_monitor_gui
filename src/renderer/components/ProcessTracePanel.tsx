@@ -178,12 +178,8 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
       if (data.targetPid === null) {
         traceCache.activePid = null;
         traceCache.isTracing = false;
-        traceCache.socketSamples = [];
-        traceCache.queueSamples = [];
         setActivePid(null);
         setIsTracing(false);
-        setSocketSamples([]);
-        setQueueSamples([]);
       }
       if (data.events.length > 0) {
         const newEvents = [...data.events, ...traceCache.events];
@@ -754,7 +750,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                       p: 2,
                       border: '1px solid rgba(255,255,255,0.08)',
                       background:
-                        'linear-gradient(135deg, rgba(255,159,10,0.08) 0%, rgba(255,255,255,0.01) 100%)',
+                        'linear-gradient(135deg, rgba(90,200,250,0.08) 0%, rgba(255,255,255,0.01) 100%)',
                     }}
                   >
                     <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
@@ -767,10 +763,10 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                       <Box display="flex" gap={1.5}>
                         {latestQueue && (
                           <>
-                            <Typography variant="caption" sx={{ color: '#FF9F0A' }}>
+                            <Typography variant="caption" sx={{ color: '#5AC8FA' }}>
                               {text.sendQueue} {latestQueue.sendQ.value.toFixed(1)} {latestQueue.sendQ.unit}
                             </Typography>
-                            <Typography variant="caption" sx={{ color: '#BF5AF2' }}>
+                            <Typography variant="caption" sx={{ color: '#34C759' }}>
                               {text.recvQueue} {latestQueue.recvQ.value.toFixed(1)} {latestQueue.recvQ.unit}
                             </Typography>
                           </>
@@ -788,7 +784,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                           <Line
                             type="monotone"
                             dataKey="sendQ"
-                            stroke="#FF9F0A"
+                            stroke="#5AC8FA"
                             strokeWidth={2}
                             dot={false}
                             isAnimationActive={false}
@@ -797,7 +793,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                           <Line
                             type="monotone"
                             dataKey="recvQ"
-                            stroke="#BF5AF2"
+                            stroke="#34C759"
                             strokeWidth={2}
                             dot={false}
                             isAnimationActive={false}

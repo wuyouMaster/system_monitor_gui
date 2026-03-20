@@ -161,6 +161,7 @@ electron.ipcMain.on("trace:stop", () => {
 });
 electron.ipcMain.handle("process-search", async (_, payload) => {
   if (!nativeWorker) return { error: "Native worker not running" };
+  const worker = nativeWorker;
   return new Promise((resolve) => {
     const handler = (msg) => {
       if (msg.channel !== "data:process-search") return;
@@ -168,11 +169,11 @@ electron.ipcMain.handle("process-search", async (_, payload) => {
       if (typeof payload.requestId === "number" && response.requestId !== payload.requestId) {
         return;
       }
-      nativeWorker == null ? void 0 : nativeWorker.off("message", handler);
+      worker.off("message", handler);
       resolve(response);
     };
-    nativeWorker.on("message", handler);
-    nativeWorker.postMessage({ type: "process:search", query: payload.query, requestId: payload.requestId });
+    worker.on("message", handler);
+    worker.postMessage({ type: "process:search", query: payload.query, requestId: payload.requestId });
   });
 });
 electron.app.whenReady().then(() => {

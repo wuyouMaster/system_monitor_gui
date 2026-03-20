@@ -239,7 +239,7 @@ export const i18n: Record<Locale, I18nSchema> = {
         io: 'Disk I/O',
         network: 'Network',
         spawn: 'Spawn',
-        queue: 'Queue',
+        queue: 'Waiting queue',
       },
       severityLabels: {
         low: 'Low',
@@ -367,7 +367,7 @@ export const i18n: Record<Locale, I18nSchema> = {
         io: '磁盘 I/O',
         network: '网络',
         spawn: '创建进程',
-        queue: '队列',
+        queue: '等待队列',
       },
       severityLabels: {
         low: '低',
