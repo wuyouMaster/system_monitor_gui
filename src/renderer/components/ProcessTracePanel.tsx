@@ -53,6 +53,12 @@ interface TraceIoSample {
   writeBytes: number;
 }
 
+interface TraceCpuSample {
+  pid: number;
+  timestamp: string;
+  cpuPercent: number;
+}
+
 interface TraceQueueSample {
   timestamp: string;
   totalRecvQueue: number;
@@ -121,6 +127,7 @@ type TraceCache = {
   pidInput: string;
   memorySamples: TraceMemorySample[];
   ioSamples: TraceIoSample[];
+  cpuSamples: TraceCpuSample[];
   socketSamples: Array<{ sent: number; recv: number; count: number }>;
   queueSamples: TraceQueueSample[];
 };
@@ -132,6 +139,7 @@ const traceCache: TraceCache = {
   pidInput: '',
   memorySamples: [],
   ioSamples: [],
+  cpuSamples: [],
   socketSamples: [],
   queueSamples: [],
 };
@@ -142,6 +150,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [selectedType, setSelectedType] = useState('all');
   const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
   const [ioSamples, setIoSamples] = useState<TraceIoSample[]>(traceCache.ioSamples);
+  const [cpuSamples, setCpuSamples] = useState<TraceCpuSample[]>(traceCache.cpuSamples);
   const [socketSamples, setSocketSamples] = useState(traceCache.socketSamples);
   const [queueSamples, setQueueSamples] = useState<TraceQueueSample[]>(traceCache.queueSamples);
   const [pidInput, setPidInput] = useState(traceCache.pidInput);
@@ -164,6 +173,8 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         setMemorySamples([]);
         traceCache.ioSamples = [];
         setIoSamples([]);
+        traceCache.cpuSamples = [];
+        setCpuSamples([]);
         traceCache.socketSamples = [];
         setSocketSamples([]);
         traceCache.queueSamples = [];
@@ -198,6 +209,14 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
           const next = [...prev, data.ioSample as TraceIoSample];
           const trimmed = next.slice(-80);
           traceCache.ioSamples = trimmed;
+          return trimmed;
+        });
+      }
+      if (data.cpuSample) {
+        setCpuSamples((prev) => {
+          const next = [...prev, data.cpuSample as TraceCpuSample];
+          const trimmed = next.slice(-80);
+          traceCache.cpuSamples = trimmed;
           return trimmed;
         });
       }
@@ -326,6 +345,15 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
+
+  const cpuChartData = useMemo(
+    () => cpuSamples.map((sample, index) => ({ index, cpu: sample.cpuPercent })),
+    [cpuSamples],
+  );
+  const latestCpuPercent = useMemo(() => {
+    const last = cpuSamples[cpuSamples.length - 1];
+    return last ? last.cpuPercent : null;
+  }, [cpuSamples]);
 
   const memoryChartData = useMemo(
     () => memorySamples.map((sample, index) => ({ index, memory: sample.memoryBytes / (1024 * 1024) })),
@@ -583,7 +611,40 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                 ))}
               </Tabs>
               <Box sx={{ ...timelineStyles, mt: 0, flex: 1 }}>
-                {selectedType === 'memory' ? (
+                {selectedType === 'cpu' ? (
+                  <Box
+                    sx={{
+                      borderRadius: 2,
+                      p: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background:
+                        'linear-gradient(135deg, rgba(255,159,10,0.08) 0%, rgba(255,255,255,0.01) 100%)',
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {text.cpuTrend}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {latestCpuPercent === null ? text.noEvents : `${latestCpuPercent.toFixed(1)} %`}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ height: 220 }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={cpuChartData}>
+                          <Line
+                            type="monotone"
+                            dataKey="cpu"
+                            stroke="#FF9F0A"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Box>
+                ) : selectedType === 'memory' ? (
                   <Box
                     sx={{
                       borderRadius: 2,

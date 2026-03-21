@@ -354,11 +354,23 @@ function pushProcesses() {
           }
         } catch {
         }
+        let cpuSample;
+        try {
+          const getCpuFn = sysInfoModule.jsGetProcessCpuUsage || sysInfoModule.js_get_process_cpu_usage;
+          if (typeof getCpuFn === "function") {
+            const cpuPercent = getCpuFn(snapshot.pid, 0.2);
+            if (typeof cpuPercent === "number" && isFinite(cpuPercent)) {
+              cpuSample = { pid: snapshot.pid, timestamp, cpuPercent };
+            }
+          }
+        } catch {
+        }
         emit("data:trace", {
           events: [],
           targetPid: trackedPid,
           memorySample,
-          ioSample
+          ioSample,
+          cpuSample
         });
       }
     }

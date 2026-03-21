@@ -73,10 +73,17 @@ export interface ProcessData {
   processCount: number;
 }
 
+export interface TraceCpuSample {
+  pid: number;
+  timestamp: string;
+  cpuPercent: number;
+}
+
 export interface TraceData {
   events: TraceEvent[];
   reset?: boolean;
   targetPid?: number | null;
+  cpuSample?: TraceCpuSample;
 }
 
 export interface TraceEvent {

@@ -75,6 +75,7 @@ type I18nSchema = {
     health: string;
     alerts: string;
     alertsHint: string;
+    cpuTrend: string;
     memoryTrend: string;
     status: string;
     emptyTitle: string;
@@ -206,6 +207,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       health: 'Trace health',
       alerts: 'Alerts',
       alertsHint: 'High severity in last 5 min',
+      cpuTrend: 'CPU usage trend',
       memoryTrend: 'Memory trend',
       ioTrend: 'Disk I/O trend',
       read: 'Read',
@@ -334,6 +336,7 @@ export const i18n: Record<Locale, I18nSchema> = {
       health: '追踪健康度',
       alerts: '告警',
       alertsHint: '近 5 分钟高严重度',
+      cpuTrend: 'CPU 使用率曲线',
       memoryTrend: '内存曲线',
       ioTrend: '磁盘 I/O 曲线',
       read: '读取',

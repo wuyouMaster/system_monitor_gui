@@ -42,6 +42,12 @@ interface TraceIoSample {
   writeBytes: number;
 }
 
+interface TraceCpuSample {
+  pid: number;
+  timestamp: string;
+  cpuPercent: number;
+}
+
 interface ProcessSnapshot {
   pid: number;
   name: string;
@@ -440,11 +446,27 @@ function pushProcesses() {
           // IO not available for this process, skip silently
         }
 
+        // Sample per-process CPU usage. The native call blocks for ~200 ms to take
+        // two measurements; this is acceptable inside the worker thread.
+        let cpuSample: TraceCpuSample | undefined;
+        try {
+          const getCpuFn = sysInfoModule.jsGetProcessCpuUsage || sysInfoModule.js_get_process_cpu_usage;
+          if (typeof getCpuFn === 'function') {
+            const cpuPercent: number = getCpuFn(snapshot.pid, 0.2);
+            if (typeof cpuPercent === 'number' && isFinite(cpuPercent)) {
+              cpuSample = { pid: snapshot.pid, timestamp, cpuPercent };
+            }
+          }
+        } catch {
+          // CPU sampling not available for this process, skip silently
+        }
+
         emit('data:trace', {
           events: [],
           targetPid: trackedPid,
           memorySample,
           ioSample,
+          cpuSample,
         });
       }
     }
