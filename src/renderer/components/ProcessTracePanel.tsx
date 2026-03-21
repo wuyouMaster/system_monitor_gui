@@ -15,7 +15,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { LineChart, Line, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, ResponsiveContainer, Legend, YAxis } from 'recharts';
 import {
   Timeline as TraceIcon,
   PlayArrow as PlayIcon,
@@ -44,6 +44,12 @@ interface TraceMemorySample {
   pid: number;
   timestamp: string;
   memoryBytes: number;
+}
+
+interface TraceCpuSample {
+  pid: number;
+  timestamp: string;
+  cpuPercent: number;
 }
 
 interface TraceIoSample {
@@ -126,6 +132,7 @@ type TraceCache = {
   isTracing: boolean;
   pidInput: string;
   memorySamples: TraceMemorySample[];
+  cpuSamples: TraceCpuSample[];
   ioSamples: TraceIoSample[];
   cpuSamples: TraceCpuSample[];
   socketSamples: Array<{ sent: number; recv: number; count: number }>;
@@ -138,6 +145,7 @@ const traceCache: TraceCache = {
   isTracing: false,
   pidInput: '',
   memorySamples: [],
+  cpuSamples: [],
   ioSamples: [],
   cpuSamples: [],
   socketSamples: [],
@@ -149,6 +157,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
+  const [cpuSamples, setCpuSamples] = useState<TraceCpuSample[]>(traceCache.cpuSamples);
   const [ioSamples, setIoSamples] = useState<TraceIoSample[]>(traceCache.ioSamples);
   const [cpuSamples, setCpuSamples] = useState<TraceCpuSample[]>(traceCache.cpuSamples);
   const [socketSamples, setSocketSamples] = useState(traceCache.socketSamples);
@@ -171,6 +180,8 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         setCurrentPage(1);
         traceCache.memorySamples = [];
         setMemorySamples([]);
+        traceCache.cpuSamples = [];
+        setCpuSamples([]);
         traceCache.ioSamples = [];
         setIoSamples([]);
         traceCache.cpuSamples = [];
@@ -282,6 +293,46 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     return () => clearInterval(timer);
   }, [isTracing, activePid]);
 
+  // Poll process CPU usage when tracing is active
+  useEffect(() => {
+    if (!isTracing || !activePid) return;
+
+    let cancelled = false;
+
+    const poll = () => {
+      if (cancelled) return;
+      window.systemInfo
+        .getProcessCpuUsage(activePid, 1.0)
+        .then((cpuPercent) => {
+          if (cancelled) return;
+          console.log('[CpuUsage]', { pid: activePid, cpuPercent });
+          setCpuSamples((prev) => {
+            const next = [
+              ...prev,
+              {
+                pid: activePid,
+                timestamp: new Date().toLocaleTimeString(),
+                cpuPercent,
+              },
+            ].slice(-80);
+            traceCache.cpuSamples = next;
+            return next;
+          });
+        })
+        .catch((err) => {
+          console.error('[CpuUsage] Error:', err);
+        });
+    };
+
+    // Fire immediately, then on interval
+    poll();
+    const timer = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [isTracing, activePid]);
+
   const handleStart = () => {
     const pid = Number(pidInput);
     if (!Number.isFinite(pid) || pid <= 0) return;
@@ -364,6 +415,21 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     if (!last) return null;
     return last.memoryBytes / (1024 * 1024);
   }, [memorySamples]);
+
+  const cpuChartData = useMemo(
+    () => cpuSamples.map((sample, index) => ({ index, cpu: sample.cpuPercent })),
+    [cpuSamples],
+  );
+  const latestCpu = useMemo(() => {
+    if (cpuSamples.length === 0) return null;
+    // Exponential moving average to smooth bursty readings
+    const alpha = 0.3;
+    let ema = cpuSamples[0].cpuPercent;
+    for (let i = 1; i < cpuSamples.length; i++) {
+      ema = alpha * cpuSamples[i].cpuPercent + (1 - alpha) * ema;
+    }
+    return ema;
+  }, [cpuSamples]);
 
   const ioChartData = useMemo(() => {
     if (ioSamples.length === 0) return [];
@@ -669,6 +735,45 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                             type="monotone"
                             dataKey="memory"
                             stroke="#5AC8FA"
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Box>
+                ) : selectedType === 'cpu' ? (
+                  <Box
+                    sx={{
+                      borderRadius: 2,
+                      p: 2,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background:
+                        'linear-gradient(135deg, rgba(255,149,0,0.08) 0%, rgba(255,255,255,0.01) 100%)',
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {text.cpuTrend}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {latestCpu === null ? text.noEvents : `${latestCpu.toFixed(1)}%`}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ height: 220 }}>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={cpuChartData}>
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={{ fontSize: 10, fill: 'rgba(235,235,245,0.45)' }}
+                            width={36}
+                            tickFormatter={(v) => `${v}%`}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="cpu"
+                            stroke="#FF9500"
                             strokeWidth={2}
                             dot={false}
                             isAnimationActive={false}

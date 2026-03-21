@@ -151,6 +151,23 @@ electron.ipcMain.handle("get-process-socket-queues", async (_, pid) => {
     return [];
   }
 });
+electron.ipcMain.handle("get-process-cpu-usage", async (_, pid, sampleSecs) => {
+  if (!sysInfoModule) {
+    console.warn("[CPU] sysInfoModule not loaded");
+    return 0;
+  }
+  try {
+    const fn = sysInfoModule.jsGetProcessCpuUsage || sysInfoModule.js_get_process_cpu_usage;
+    if (typeof fn !== "function") {
+      console.warn("[CPU] jsGetProcessCpuUsage not found on native module. Available funcs:", Object.keys(sysInfoModule).filter((k) => typeof sysInfoModule[k] === "function").join(", "));
+      return 0;
+    }
+    return fn(pid, sampleSecs ?? 0.5);
+  } catch (e) {
+    console.warn(`[CPU] get-process-cpu-usage(${pid}) error:`, e == null ? void 0 : e.message);
+    return 0;
+  }
+});
 electron.ipcMain.on("trace:start", (_, payload) => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: "trace:start", pid: payload.pid });

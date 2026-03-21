@@ -177,6 +177,21 @@ ipcMain.handle('get-process-socket-queues', async (_, pid: number) => {
   }
 });
 
+ipcMain.handle('get-process-cpu-usage', async (_, pid: number, sampleSecs?: number) => {
+  if (!sysInfoModule) { console.warn('[CPU] sysInfoModule not loaded'); return 0; }
+  try {
+    const fn = sysInfoModule.jsGetProcessCpuUsage || sysInfoModule.js_get_process_cpu_usage;
+    if (typeof fn !== 'function') {
+      console.warn('[CPU] jsGetProcessCpuUsage not found on native module. Available funcs:', Object.keys(sysInfoModule).filter(k => typeof sysInfoModule[k] === 'function').join(', '));
+      return 0;
+    }
+    return fn(pid, sampleSecs ?? 0.5);
+  } catch (e: any) {
+    console.warn(`[CPU] get-process-cpu-usage(${pid}) error:`, e?.message);
+    return 0;
+  }
+});
+
 ipcMain.on('trace:start', (_, payload: { pid: number }) => {
   if (!nativeWorker) return;
   nativeWorker.postMessage({ type: 'trace:start', pid: payload.pid });

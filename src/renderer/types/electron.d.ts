@@ -12,6 +12,7 @@ declare global {
       listDir:       (path: string) => Promise<{ entries?: DirEntry[]; error?: string }>;
       getProcessSocketStats: (pid: number) => Promise<SocketStatItem[]>;
       getProcessSocketQueues: (pid: number) => Promise<SocketQueueItem[]>;
+      getProcessCpuUsage: (pid: number, sampleSecs?: number) => Promise<number>;
     };
   }
 }

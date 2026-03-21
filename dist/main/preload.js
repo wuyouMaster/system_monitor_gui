@@ -29,5 +29,6 @@ electron.contextBridge.exposeInMainWorld("systemInfo", {
   searchProcess: (query, requestId) => electron.ipcRenderer.invoke("process-search", { query, requestId }),
   listDir: (path) => electron.ipcRenderer.invoke("list-dir", path),
   getProcessSocketStats: (pid) => electron.ipcRenderer.invoke("get-process-socket-stats", pid),
-  getProcessSocketQueues: (pid) => electron.ipcRenderer.invoke("get-process-socket-queues", pid)
+  getProcessSocketQueues: (pid) => electron.ipcRenderer.invoke("get-process-socket-queues", pid),
+  getProcessCpuUsage: (pid, sampleSecs) => electron.ipcRenderer.invoke("get-process-cpu-usage", pid, sampleSecs)
 });
