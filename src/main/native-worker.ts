@@ -494,8 +494,7 @@ function searchProcesses(query: string) {
 
   const processes = sysInfoModule.getProcesses().map(normalizeProcess);
   if (/^\d+$/.test(needle)) {
-    const pid = Number(needle);
-    const results = processes.filter((process: any) => process.pid === pid);
+    const results = processes.filter((process: any) => process.pid.toString().includes(needle));
     return { results };
   }
 

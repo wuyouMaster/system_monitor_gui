@@ -390,8 +390,7 @@ function searchProcesses(query) {
   if (!needle) return { results: [] };
   const processes = sysInfoModule.getProcesses().map(normalizeProcess);
   if (/^\d+$/.test(needle)) {
-    const pid = Number(needle);
-    const results2 = processes.filter((process2) => process2.pid === pid);
+    const results2 = processes.filter((process2) => process2.pid.toString().includes(needle));
     return { results: results2 };
   }
   let regex;
