@@ -147,7 +147,7 @@ const traceCache: TraceCache = {
 export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ locale }) => {
   const text = i18n[locale].trace;
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
+  const [selectedType, setSelectedType] = useState('cpu');
   const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
   const [cpuSamples, setCpuSamples] = useState<TraceCpuSample[]>(traceCache.cpuSamples);
   const [ioSamples, setIoSamples] = useState<TraceIoSample[]>(traceCache.ioSamples);
@@ -162,7 +162,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const cacheLimit = 500;
   const pageSize = 8;
 
-  const typeOptions = useMemo(() => ['all', 'cpu', 'memory', 'io', 'network', 'spawn', 'queue'], []);
+  const typeOptions = useMemo(() => ['cpu', 'memory', 'io', 'network', 'spawn', 'queue'], []);
 
   useEffect(() => {
     const unsubTrace = window.systemInfo.onTraceData((data) => {
@@ -353,7 +353,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const filteredEvents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     return traceCache.events.filter((event) => {
-      const typeMatched = selectedType === 'all' || event.type === selectedType;
+      const typeMatched = event.type === selectedType;
       if (!typeMatched) return false;
       if (!query) return true;
       const haystack = `${event.process} ${event.summary} ${event.pid}`.toLowerCase();

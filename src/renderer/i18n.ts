@@ -93,7 +93,6 @@ type I18nSchema = {
     hideCommand: string;
     searchPlaceholder: string;
     typeLabels: {
-      all: string;
       cpu: string;
       memory: string;
       io: string;
@@ -235,7 +234,6 @@ export const i18n: Record<Locale, I18nSchema> = {
       hideCommand: 'Hide command',
       searchPlaceholder: 'Search process or event details',
       typeLabels: {
-        all: 'All types',
         cpu: 'CPU',
         memory: 'Memory',
         io: 'Disk I/O',
@@ -364,7 +362,6 @@ export const i18n: Record<Locale, I18nSchema> = {
       hideCommand: '隐藏命令',
       searchPlaceholder: '搜索进程或事件详情',
       typeLabels: {
-        all: '全部类型',
         cpu: 'CPU',
         memory: '内存',
         io: '磁盘 I/O',
