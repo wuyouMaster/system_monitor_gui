@@ -59,12 +59,6 @@ interface TraceIoSample {
   writeBytes: number;
 }
 
-interface TraceCpuSample {
-  pid: number;
-  timestamp: string;
-  cpuPercent: number;
-}
-
 interface TraceQueueSample {
   timestamp: string;
   totalRecvQueue: number;
@@ -134,7 +128,6 @@ type TraceCache = {
   memorySamples: TraceMemorySample[];
   cpuSamples: TraceCpuSample[];
   ioSamples: TraceIoSample[];
-  cpuSamples: TraceCpuSample[];
   socketSamples: Array<{ sent: number; recv: number; count: number }>;
   queueSamples: TraceQueueSample[];
 };
@@ -147,7 +140,6 @@ const traceCache: TraceCache = {
   memorySamples: [],
   cpuSamples: [],
   ioSamples: [],
-  cpuSamples: [],
   socketSamples: [],
   queueSamples: [],
 };
@@ -159,7 +151,6 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [memorySamples, setMemorySamples] = useState<TraceMemorySample[]>(traceCache.memorySamples);
   const [cpuSamples, setCpuSamples] = useState<TraceCpuSample[]>(traceCache.cpuSamples);
   const [ioSamples, setIoSamples] = useState<TraceIoSample[]>(traceCache.ioSamples);
-  const [cpuSamples, setCpuSamples] = useState<TraceCpuSample[]>(traceCache.cpuSamples);
   const [socketSamples, setSocketSamples] = useState(traceCache.socketSamples);
   const [queueSamples, setQueueSamples] = useState<TraceQueueSample[]>(traceCache.queueSamples);
   const [pidInput, setPidInput] = useState(traceCache.pidInput);
@@ -184,8 +175,6 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         setCpuSamples([]);
         traceCache.ioSamples = [];
         setIoSamples([]);
-        traceCache.cpuSamples = [];
-        setCpuSamples([]);
         traceCache.socketSamples = [];
         setSocketSamples([]);
         traceCache.queueSamples = [];
@@ -416,13 +405,8 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     return last.memoryBytes / (1024 * 1024);
   }, [memorySamples]);
 
-  const cpuChartData = useMemo(
-    () => cpuSamples.map((sample, index) => ({ index, cpu: sample.cpuPercent })),
-    [cpuSamples],
-  );
   const latestCpu = useMemo(() => {
     if (cpuSamples.length === 0) return null;
-    // Exponential moving average to smooth bursty readings
     const alpha = 0.3;
     let ema = cpuSamples[0].cpuPercent;
     for (let i = 1; i < cpuSamples.length; i++) {
