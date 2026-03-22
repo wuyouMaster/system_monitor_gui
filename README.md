@@ -2,8 +2,8 @@
 
 一个基于 Electron + React + TypeScript 的系统监控应用，使用 `js-query-system-info` npm 包获取系统信息。
 
-![System Monitor](./screenshot.png)
-
+![Cpu Usage](./cpu.png)
+![Process Track](./process_track.png)
 ## 功能特性
 
 - **内存监控**: 实时显示内存使用量、可用量、使用率
