@@ -1,7 +1,5 @@
 "use strict";
 var _a;
-const fs = require("fs");
-const path = require("path");
 const worker_threads = require("worker_threads");
 let sysInfoModule = null;
 let fastTimer = null;
@@ -201,40 +199,15 @@ function stopChildTracking() {
     targetPid: null
   });
 }
-function getNativeModuleName() {
-  const platformMap = { darwin: "darwin", linux: "linux", win32: "win32" };
-  const archMap = { x64: "x64", arm64: "arm64", ia32: "ia32" };
-  const plat = platformMap[process.platform] || process.platform;
-  const arc = archMap[process.arch] || process.arch;
-  const toolchainSuffix = process.platform === "win32" ? "-msvc" : "";
-  return `index.${plat}-${arc}${toolchainSuffix}.node`;
-}
 function loadNativeModule() {
   if (sysInfoModule) return true;
-  const moduleName = getNativeModuleName();
-  const isDev = process.env.VITE_DEV_SERVER_URL;
-  const devPaths = [
-    path.join(__dirname, "../../", moduleName),
-    path.join(__dirname, "../", moduleName)
-  ];
-  const prodPaths = [path.join(process.resourcesPath, "native", moduleName)];
-  const searchPaths = isDev ? devPaths : prodPaths;
-  searchPaths.push(
-    path.join(__dirname, "../../query_system_info/dist", moduleName),
-    path.join(__dirname, "../../../query_system_info/dist", moduleName)
-  );
-  for (const modulePath of searchPaths) {
-    try {
-      if (fs.existsSync(modulePath)) {
-        sysInfoModule = require(modulePath);
-        return true;
-      }
-    } catch (e) {
-      console.warn(`Worker failed to load native module from ${modulePath}:`, e);
-    }
+  try {
+    sysInfoModule = require("js-query-system-info");
+    return true;
+  } catch (e) {
+    console.error("Failed to load js-query-system-info package:", e);
+    return false;
   }
-  console.error("Worker native module not found. Searched:", searchPaths);
-  return false;
 }
 function emit(channel, payload) {
   var _a2;
@@ -378,10 +351,10 @@ function pushProcesses() {
     console.error("worker pushProcesses error:", e);
   }
 }
-function normalizeProcess(process2) {
+function normalizeProcess(process) {
   return {
-    ...process2,
-    memoryUsage: typeof process2.memoryUsage === "number" ? process2.memoryUsage : typeof process2.memory_usage === "number" ? process2.memory_usage : 0
+    ...process,
+    memoryUsage: typeof process.memoryUsage === "number" ? process.memoryUsage : typeof process.memory_usage === "number" ? process.memory_usage : 0
   };
 }
 function searchProcesses(query) {
@@ -390,7 +363,7 @@ function searchProcesses(query) {
   if (!needle) return { results: [] };
   const processes = sysInfoModule.getProcesses().map(normalizeProcess);
   if (/^\d+$/.test(needle)) {
-    const results2 = processes.filter((process2) => process2.pid.toString().includes(needle));
+    const results2 = processes.filter((process) => process.pid.toString().includes(needle));
     return { results: results2 };
   }
   let regex;
@@ -399,7 +372,7 @@ function searchProcesses(query) {
   } catch (e) {
     return { results: [], error: (e == null ? void 0 : e.message) ?? String(e) };
   }
-  const results = processes.filter((process2) => regex.test(String(process2.name || "")));
+  const results = processes.filter((process) => regex.test(String(process.name || "")));
   return { results };
 }
 function startDataTimers() {

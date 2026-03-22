@@ -6,11 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
-    "build:rust": "cd ../query_system_info/js-abi && yarn install && yarn build",
-    "copy:native": "node scripts/copy-native.js",
-    "predev": "yarn run copy:native",
     "preview": "vite preview",
-    "electron:dev": "yarn run build:rust && yarn run copy:native && vite",
+    "electron:dev": "vite",
     "electron:build": "vite build && electron-builder"
   },
   "dependencies": {
@@ -19,6 +16,7 @@
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@tanstack/react-virtual": "^3.13.21",
+    "js-query-system-info": "1.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.10.0"
@@ -44,16 +42,8 @@
     },
     "files": [
       "dist/**/*",
-      "public/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../query_system_info/dist",
-        "to": "native",
-        "filter": [
-          "**/*.node"
-        ]
-      }
+      "public/**/*",
+      "node_modules/js-query-system-info/**/*.node"
     ]
   }
 }

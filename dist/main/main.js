@@ -1,44 +1,18 @@
 "use strict";
 const electron = require("electron");
 const path = require("path");
-const fs = require("fs");
 const worker_threads = require("worker_threads");
 let sysInfoModule = null;
 let win = null;
 let nativeWorker = null;
-function getNativeModuleName() {
-  const platformMap = { darwin: "darwin", linux: "linux", win32: "win32" };
-  const archMap = { x64: "x64", arm64: "arm64", ia32: "ia32" };
-  const plat = platformMap[process.platform] || process.platform;
-  const arc = archMap[process.arch] || process.arch;
-  const toolchainSuffix = process.platform === "win32" ? "-msvc" : "";
-  return `index.${plat}-${arc}${toolchainSuffix}.node`;
-}
 function loadNativeModule() {
-  const moduleName = getNativeModuleName();
-  const isDev = process.env.VITE_DEV_SERVER_URL;
-  const devPaths = [
-    path.join(__dirname, "../../", moduleName),
-    path.join(__dirname, "../", moduleName)
-  ];
-  const prodPaths = [path.join(process.resourcesPath, "native", moduleName)];
-  const searchPaths = isDev ? devPaths : prodPaths;
-  searchPaths.push(
-    path.join(__dirname, "../../query_system_info/dist", moduleName),
-    path.join(__dirname, "../../../query_system_info/dist", moduleName)
-  );
-  for (const modulePath of searchPaths) {
-    try {
-      if (fs.existsSync(modulePath)) {
-        sysInfoModule = require(modulePath);
-        console.log(`Native module loaded from: ${modulePath}`);
-        return;
-      }
-    } catch (e) {
-      console.warn(`Failed to load from ${modulePath}:`, e);
-    }
+  if (sysInfoModule) return;
+  try {
+    sysInfoModule = require("js-query-system-info");
+    console.log("Native module loaded from js-query-system-info package");
+  } catch (e) {
+    console.error("Failed to load js-query-system-info package:", e);
   }
-  console.error("Native module not found. Searched:", searchPaths);
 }
 function send(channel, payload) {
   if (win && !win.isDestroyed()) {

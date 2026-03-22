@@ -1,6 +1,6 @@
 # System Monitor
 
-一个基于 Electron + React + TypeScript 的系统监控应用，使用 Rust NAPI-RS 绑定获取系统信息。
+一个基于 Electron + React + TypeScript 的系统监控应用，使用 `js-query-system-info` npm 包获取系统信息。
 
 ![System Monitor](./screenshot.png)
 
@@ -17,7 +17,7 @@
 - **前端**: React 18 + TypeScript + Vite
 - **UI**: Material UI + Recharts
 - **桌面框架**: Electron 28
-- **系统信息**: Rust NAPI-RS 绑定 (query_system_info)
+- **系统信息**: js-query-system-info (Rust NAPI-RS 绑定)
 
 ## 项目结构
 
@@ -26,6 +26,7 @@ system-monitor/
 ├── src/
 │   ├── main/
 │   │   ├── main.ts          # Electron 主进程
+│   │   ├── native-worker.ts # 原生模块 Worker
 │   │   └── preload.ts       # Electron 预加载脚本
 │   └── renderer/
 │       ├── components/       # React 组件
@@ -54,14 +55,13 @@ system-monitor/
 ### 前置要求
 
 1. Node.js 18+
-2. Rust 1.85+ (用于构建 NAPI-RS 绑定)
-3. Yarn
+2. Yarn
 
 ### 快速启动（推荐）
 
 **macOS/Linux:**
 ```bash
-cd system-monitor
+cd system_monitor_gui
 ./scripts/start-dev.sh
 ```
 
@@ -69,44 +69,34 @@ cd system-monitor
 
 ```bash
 # 1. 进入项目目录
-cd system-monitor
+cd system_monitor_gui
 
 # 2. 安装依赖
-npm install
+yarn install
 
-# 3. 构建 Rust NAPI 绑定
-cd ../query_system_info/js-abi
-yarn install && yarn build
-cd ../../system-monitor
-
-# 4. 复制 .node 文件到项目目录
-npm run copy:native
-
-# 5. 开发模式运行
-npm run dev
+# 3. 开发模式运行
+yarn dev
 ```
 
 ### 常见问题
 
-**Q: 报错 "Cannot find module index.node"**
+**Q: 报错 "Cannot find module js-query-system-info"**
 
-A: 确保 Rust NAPI 模块已构建：
+A: 确保已安装依赖：
 ```bash
-cd ../query_system_info/js-abi && yarn build
-cd ../../system-monitor && npm run copy:native
+yarn install
 ```
 
-**Q: 报错 "Native module not found"**
+**Q: 报错 "Native module not loaded"**
 
-A: 检查 `.node` 文件是否存在：
+A: 检查 npm 包是否正确安装：
 ```bash
-ls -la ../query_system_info/dist/*.node
-# 应该看到类似 index.darwin-arm64.node 的文件
+ls node_modules/js-query-system-info/
 ```
 
 **Q: 构建后应用打不开**
 
-A: 查看 Electron 控制台输出，确认 native 模块加载路径正确。开发模式下 `.node` 文件应该在项目根目录。
+A: 查看 Electron 控制台输出，确认 native 模块加载路径正确。
 
 ## 界面说明
 

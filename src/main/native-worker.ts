@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { parentPort } from 'worker_threads';
 
 type PushMessage = {
@@ -271,46 +269,18 @@ function stopChildTracking() {
     targetPid: null,
   });
 }
-function getNativeModuleName(): string {
-  const platformMap: Record<string, string> = { darwin: 'darwin', linux: 'linux', win32: 'win32' };
-  const archMap: Record<string, string> = { x64: 'x64', arm64: 'arm64', ia32: 'ia32' };
-  const plat = platformMap[process.platform] || process.platform;
-  const arc = archMap[process.arch] || process.arch;
-  // Windows uses MSVC toolchain by default, so NAPI-RS appends -msvc to the filename
-  const toolchainSuffix = process.platform === 'win32' ? '-msvc' : '';
-  return `index.${plat}-${arc}${toolchainSuffix}.node`;
-}
-
 function loadNativeModule(): boolean {
   if (sysInfoModule) return true;
 
-  const moduleName = getNativeModuleName();
-  const isDev = process.env.VITE_DEV_SERVER_URL;
-  const devPaths = [
-    path.join(__dirname, '../../', moduleName),
-    path.join(__dirname, '../', moduleName),
-  ];
-  const prodPaths = [path.join(process.resourcesPath, 'native', moduleName)];
-  const searchPaths = isDev ? devPaths : prodPaths;
-  searchPaths.push(
-    path.join(__dirname, '../../query_system_info/dist', moduleName),
-    path.join(__dirname, '../../../query_system_info/dist', moduleName),
-  );
-
-  for (const modulePath of searchPaths) {
-    try {
-      if (fs.existsSync(modulePath)) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        sysInfoModule = require(modulePath);
-        return true;
-      }
-    } catch (e) {
-      console.warn(`Worker failed to load native module from ${modulePath}:`, e);
-    }
+  try {
+    // Import from npm package js-query-system-info
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    sysInfoModule = require('js-query-system-info');
+    return true;
+  } catch (e) {
+    console.error('Failed to load js-query-system-info package:', e);
+    return false;
   }
-
-  console.error('Worker native module not found. Searched:', searchPaths);
-  return false;
 }
 
 function emit(channel: PushMessage['channel'], payload: unknown) {
