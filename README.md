@@ -6,6 +6,7 @@
 
 ![Cpu Usage](./cpu.png)
 ![Process Track](./process_track.png)
+![Remote Config](./remote_trace.png)
 
 ## 更新日志
 
