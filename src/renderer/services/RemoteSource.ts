@@ -606,6 +606,34 @@ export class RemoteSource implements DataSource {
                   console.warn('[RemoteSource] Trace SSE warning:', dataStr);
                 } else if (currentEvent === 'end') {
                   console.log('[RemoteSource] Trace SSE ended:', dataStr);
+                } else if (currentEvent === 'trace_sample') {
+                  try {
+                    const sample = JSON.parse(dataStr);
+                    if (sample.process_terminated !== null && sample.process_terminated !== undefined) {
+                      const deadPid = sample.process_terminated;
+                      console.log('[RemoteSource] Process', deadPid, 'terminated, stopping trace');
+                      this.stopTracePoll();
+                      this.traceTargetPid = null;
+                      this.traceSseAbort?.abort();
+                      this.traceSseAbort = null;
+                      for (const cb of this.traceCallbacks) {
+                        cb({
+                          events: [{
+                            id: `evt_${String(++this.eventCounter).padStart(3, '0')}`,
+                            timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+                            process: 'System',
+                            pid: deadPid,
+                            type: 'spawn',
+                            summary: `Process ${deadPid} terminated`,
+                            severity: 'high',
+                            delta: 'killed',
+                            durationMs: 0,
+                          }],
+                          targetPid: null,
+                        });
+                      }
+                    }
+                  } catch { /* ignore parse errors */ }
                 }
                 currentEvent = '';
               }
@@ -624,6 +652,7 @@ export class RemoteSource implements DataSource {
     // Poll process details (memory/cpu/io) every 3s — mirrors local worker pushProcesses
     this.tracePreviousMemory = null;
     this.stopTracePoll();
+    let pollNotFoundCount = 0;
     const poll = () => {
       if (this.traceTargetPid === null) return;
       const p = this.traceTargetPid;
@@ -632,7 +661,35 @@ export class RemoteSource implements DataSource {
         this.apiGet<any>(`/api/processes/${p}/io`),
         this.apiGet<any>(`/api/processes/${p}/cpu-usage`),
       ]).then(([proc, io, cpuResult]) => {
-        if (!proc || this.traceTargetPid !== p) return;
+        if (this.traceTargetPid !== p) return;
+        if (!proc) {
+          pollNotFoundCount++;
+          if (pollNotFoundCount >= 2) {
+            console.log('[RemoteSource] Poll: process', p, 'not found twice, stopping trace');
+            this.stopTracePoll();
+            this.traceTargetPid = null;
+            this.traceSseAbort?.abort();
+            this.traceSseAbort = null;
+            for (const cb of this.traceCallbacks) {
+              cb({
+                events: [{
+                  id: `evt_${String(++this.eventCounter).padStart(3, '0')}`,
+                  timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
+                  process: 'System',
+                  pid: p,
+                  type: 'spawn',
+                  summary: `Process ${p} terminated`,
+                  severity: 'high',
+                  delta: 'killed',
+                  durationMs: 0,
+                }],
+                targetPid: null,
+              });
+            }
+          }
+          return;
+        }
+        pollNotFoundCount = 0;
         const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
         const memoryBytes: number = proc.memory_bytes ?? proc.memoryUsage ?? 0;
 
