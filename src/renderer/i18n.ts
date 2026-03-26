@@ -116,6 +116,9 @@ type I18nSchema = {
     paused: string;
     pause: string;
     killTooltip: (pid: number) => string;
+    processKilledTitle: string;
+    processKilledDetail: (pid: number) => string;
+    processKilledConfirm: string;
     ioTrend: string;
     read: string;
     write: string;
@@ -235,6 +238,9 @@ export const i18n: Record<Locale, I18nSchema> = {
       queueTrend: 'Socket queue trend',
       sendQueue: 'Send Q',
       recvQueue: 'Recv Q',
+      processKilledTitle: 'Process terminated',
+      processKilledDetail: (pid: number) => `Traced process PID ${pid} no longer exists. Tracking has been stopped.`,
+      processKilledConfirm: 'OK',
       status: 'Status',
       emptyTitle: 'Start a trace to see activity',
       emptyHint: 'Enter a PID and click start to capture process activity in real time.',
@@ -380,6 +386,9 @@ export const i18n: Record<Locale, I18nSchema> = {
       queueTrend: 'Socket 队列曲线',
       sendQueue: '发送队列',
       recvQueue: '接收队列',
+      processKilledTitle: '进程已终止',
+      processKilledDetail: (pid: number) => `正在追踪的进程 PID ${pid} 已不存在，追踪已自动停止。`,
+      processKilledConfirm: '确认',
       status: '状态',
       emptyTitle: '开始追踪以查看活动',
       emptyHint: '输入 PID 并点击开始，即可实时捕获进程活动。',

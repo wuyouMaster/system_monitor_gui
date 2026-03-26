@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -14,6 +14,11 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { LineChart, Line, ResponsiveContainer, Legend, YAxis } from 'recharts';
 import {
@@ -160,6 +165,9 @@ export const ProcessTracePanel: React.FC<{ locale: Locale; dataSource: DataSourc
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedCommands, setExpandedCommands] = useState<Record<string, boolean>>({});
   const [events, setEvents] = useState<TraceEvent[]>(traceCache.events);
+  const [showKilledDialog, setShowKilledDialog] = useState(false);
+  const [killedPid, setKilledPid] = useState<number | null>(null);
+  const processNotFoundCount = useRef(0);
 
   const cacheLimit = 500;
   const pageSize = 8;
@@ -230,6 +238,35 @@ export const ProcessTracePanel: React.FC<{ locale: Locale; dataSource: DataSourc
       unsubTrace();
     };
   }, [dataSource]);
+
+  // Check if the traced process still exists — auto-stop after 2 consecutive misses
+  useEffect(() => {
+    if (!isTracing || !activePid) {
+      processNotFoundCount.current = 0;
+      return;
+    }
+    const unsub = dataSource.onProcessData((data) => {
+      if (!isTracing || !activePid) return;
+      const exists = data.processes.some((p: any) => p.pid === activePid);
+      if (exists) {
+        processNotFoundCount.current = 0;
+      } else {
+        processNotFoundCount.current += 1;
+        if (processNotFoundCount.current >= 2) {
+          const deadPid = activePid;
+          dataSource.stopTrace();
+          traceCache.activePid = null;
+          traceCache.isTracing = false;
+          setActivePid(null);
+          setIsTracing(false);
+          processNotFoundCount.current = 0;
+          setKilledPid(deadPid);
+          setShowKilledDialog(true);
+        }
+      }
+    });
+    return () => unsub();
+  }, [isTracing, activePid, dataSource]);
 
   // Poll socket stats when tracing is active
   useEffect(() => {
@@ -1251,6 +1288,40 @@ export const ProcessTracePanel: React.FC<{ locale: Locale; dataSource: DataSourc
           </Box>
         </Box>
       </CardContent>
+      <Dialog
+        open={showKilledDialog}
+        onClose={() => setShowKilledDialog(false)}
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(180deg, rgba(30,30,30,0.98) 0%, rgba(20,20,20,0.98) 100%)',
+            border: '1px solid rgba(255,59,48,0.3)',
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: '#FF3B30', fontWeight: 700 }}>
+          {text.processKilledTitle}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'rgba(235,235,245,0.8)' }}>
+            {killedPid !== null ? text.processKilledDetail(killedPid) : ''}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowKilledDialog(false)}
+            variant="contained"
+            sx={{
+              background: '#FF3B30',
+              '&:hover': { background: '#D63029' },
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            {text.processKilledConfirm}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 });
