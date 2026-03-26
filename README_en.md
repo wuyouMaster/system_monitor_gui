@@ -2,10 +2,28 @@
 
 [中文文档](./README.md) | **English**
 
-A system monitoring application built with Electron + React + TypeScript, using the `js-query-system-info` npm package to retrieve system information.
+A system monitoring application developed using Electron, React, and TypeScript, leveraging `js-query-system-info` and `query-system-info`. The application supports both local data sources (utilizing `js-query-system-info`) and remote data source subscription (through the server mode of `query-system-info`).
 
 ![Cpu Usage](./cpu.png)
 ![Process Track](./process_track.png)
+![Remote Config](./remote_trace.png)
+
+## Changelog
+
+### 2026-03-26 — Remote Data Source + Process Termination Notification
+
+**Remote Data Source (Local / Remote Switching)**
+- DataSource abstraction layer decouples data collection from rendering
+- LocalSource: wraps Electron IPC (existing logic unchanged)
+- RemoteSource: fetches data from query_system_info server via HTTP polling + SSE
+- Settings panel (gear icon in header) to switch between Local and Remote
+- Remote config: server URL + username + password, with "Test Connection" button
+- JWT authentication, automatic token expiry handling
+
+**Process Termination Auto-Notification**
+- Client checks process existence via onProcessData polling
+- 2 consecutive misses → auto-stop tracking + dialog shows process terminated
+- Remote mode: server SSE pushes process_terminated event, RemoteSource auto-stops and notifies UI
 
 ## Features
 

@@ -2,10 +2,28 @@
 
 **中文** | [English](./README_en.md)
 
-一个基于 Electron + React + TypeScript 的系统监控应用，使用 `js-query-system-info` npm 包获取系统信息。
+一个基于 Electron + React + TypeScript 的系统监控应用，基于 `js-query-system-info`和`query-system-info`。 支持本地数据源(基于`js-query-system-info`)和订阅远程数据源(基于`query-system-info`的server模式)。
 
 ![Cpu Usage](./cpu.png)
 ![Process Track](./process_track.png)
+
+## 更新日志
+
+### 2026-03-26 — 远程数据源 + 进程终止通知
+
+**远程数据源（Local / Remote 切换）**
+- DataSource 抽象层，解耦数据采集与渲染
+- LocalSource：包装 Electron IPC（原有逻辑不变）
+- RemoteSource：通过 HTTP 轮询 + SSE 从 query_system_info server 获取数据
+- 设置面板（Header 齿轮图标），支持切换 Local / Remote
+- Remote 配置：服务器地址 + 用户名 + 密码，带"测试连接"按钮
+- JWT 认证，token 过期自动处理
+
+**进程终止自动通知**
+- 客户端通过 onProcessData 轮询检查追踪进程是否存在
+- 连续 2 次未找到 → 自动停止追踪 + 弹窗提示进程已终止
+- 远程模式：服务端 SSE 推送 process_terminated 事件，RemoteSource 接收后自动停止并通知 UI
+
 ## 功能特性
 
 - **内存监控**: 实时显示内存使用量、可用量、使用率
