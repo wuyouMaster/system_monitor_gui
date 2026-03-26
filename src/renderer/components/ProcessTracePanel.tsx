@@ -25,6 +25,7 @@ import {
   StopCircle as KillIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
+import type { DataSource } from '../types/data-source';
 
 interface TraceEvent {
   id: string;
@@ -144,7 +145,7 @@ const traceCache: TraceCache = {
   queueSamples: [],
 };
 
-export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ locale }) => {
+export const ProcessTracePanel: React.FC<{ locale: Locale; dataSource: DataSource }> = React.memo(({ locale, dataSource }) => {
   const text = i18n[locale].trace;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('cpu');
@@ -158,6 +159,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const [isTracing, setIsTracing] = useState(traceCache.isTracing);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedCommands, setExpandedCommands] = useState<Record<string, boolean>>({});
+  const [events, setEvents] = useState<TraceEvent[]>(traceCache.events);
 
   const cacheLimit = 500;
   const pageSize = 8;
@@ -165,9 +167,10 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
   const typeOptions = useMemo(() => ['cpu', 'memory', 'io', 'network', 'spawn', 'queue'], []);
 
   useEffect(() => {
-    const unsubTrace = window.systemInfo.onTraceData((data) => {
+    const unsubTrace = dataSource.onTraceData((data: any) => {
       if (data.reset) {
         traceCache.events = [];
+        setEvents([]);
         setCurrentPage(1);
         traceCache.memorySamples = [];
         setMemorySamples([]);
@@ -195,6 +198,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
       if (data.events.length > 0) {
         const newEvents = [...data.events, ...traceCache.events];
         traceCache.events = newEvents.slice(0, cacheLimit);
+        setEvents([...traceCache.events]);
       }
       if (data.memorySample) {
         setMemorySamples((prev) => {
@@ -225,13 +229,13 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     return () => {
       unsubTrace();
     };
-  }, []);
+  }, [dataSource]);
 
   // Poll socket stats when tracing is active
   useEffect(() => {
     if (!isTracing || !activePid) return;
     const timer = setInterval(() => {
-      window.systemInfo
+      dataSource
         .getProcessSocketStats(activePid)
         .then((stats) => {
           console.log('[SocketStats]', { pid: activePid, stats, count: Array.isArray(stats) ? stats.length : 'not array' });
@@ -249,13 +253,13 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         });
     }, 3000);
     return () => clearInterval(timer);
-  }, [isTracing, activePid]);
+  }, [isTracing, activePid, dataSource]);
 
   // Poll socket queue data when tracing is active
   useEffect(() => {
     if (!isTracing || !activePid) return;
     const timer = setInterval(() => {
-      window.systemInfo
+      dataSource
         .getProcessSocketQueues(activePid)
         .then((queues) => {
           if (!Array.isArray(queues) || queues.length === 0) return;
@@ -280,7 +284,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
         });
     }, 2000);
     return () => clearInterval(timer);
-  }, [isTracing, activePid]);
+  }, [isTracing, activePid, dataSource]);
 
   // Poll process CPU usage when tracing is active
   useEffect(() => {
@@ -290,7 +294,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
 
     const poll = () => {
       if (cancelled) return;
-      window.systemInfo
+      dataSource
         .getProcessCpuUsage(activePid, 1.0)
         .then((cpuPercent) => {
           if (cancelled) return;
@@ -320,24 +324,24 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
       cancelled = true;
       clearInterval(timer);
     };
-  }, [isTracing, activePid]);
+  }, [isTracing, activePid, dataSource]);
 
   const handleStart = () => {
     const pid = Number(pidInput);
     if (!Number.isFinite(pid) || pid <= 0) return;
-    window.systemInfo.startTrace(pid);
+    dataSource.startTrace(pid);
     traceCache.activePid = pid;
     traceCache.isTracing = true;
     setIsTracing(true);
   };
 
   const handleKill = useCallback(async (pid: number) => {
-    const result = await window.systemInfo.killProcess(pid);
+    const result = await dataSource.killProcess(pid);
     if (result?.error) console.error(`Kill PID ${pid} failed:`, result.error);
   }, []);
 
   const handleStop = () => {
-    window.systemInfo.stopTrace();
+    dataSource.stopTrace();
     traceCache.activePid = null;
     traceCache.isTracing = false;
     setIsTracing(false);
@@ -352,14 +356,14 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
 
   const filteredEvents = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    return traceCache.events.filter((event) => {
+    return events.filter((event) => {
       const typeMatched = event.type === selectedType;
       if (!typeMatched) return false;
       if (!query) return true;
       const haystack = `${event.process} ${event.summary} ${event.pid}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [searchTerm, selectedType, memorySamples]);
+  }, [searchTerm, selectedType, events]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -371,9 +375,9 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
     setCurrentPage((prev) => Math.min(prev, pageCount));
   }, [pageCount]);
 
-  const totalAlerts = traceCache.events.filter((event) => event.severity === 'high').length;
+  const totalAlerts = events.filter((event) => event.severity === 'high').length;
   const hasEvents = filteredEvents.length > 0;
-  const isIdle = !isTracing && traceCache.events.length === 0;
+  const isIdle = !isTracing && events.length === 0;
   const statusLabel = isTracing ? text.live : text.paused;
   const statusColor = isTracing ? '#32D74B' : 'rgba(235,235,245,0.6)';
   const statusDetail = isTracing
@@ -1219,7 +1223,7 @@ export const ProcessTracePanel: React.FC<{ locale: Locale }> = React.memo(({ loc
                   {text.events}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {traceCache.events.length}
+                  {events.length}
                 </Typography>
               </Box>
               <Box display="flex" justifyContent="space-between">

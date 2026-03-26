@@ -127,6 +127,23 @@ type I18nSchema = {
     sendQueue: string;
     recvQueue: string;
   };
+  settings: {
+    title: string;
+    dataSource: string;
+    local: string;
+    localDesc: string;
+    remote: string;
+    remoteDesc: string;
+    serverUrl: string;
+    username: string;
+    password: string;
+    testConnection: string;
+    testing: string;
+    connected: string;
+    connectionFailed: string;
+    save: string;
+    cancel: string;
+  };
 };
 
 export const i18n: Record<Locale, I18nSchema> = {
@@ -257,6 +274,23 @@ export const i18n: Record<Locale, I18nSchema> = {
       pause: 'Pause',
       killTooltip: (pid) => `Kill PID ${pid}`,
     },
+    settings: {
+      title: 'Settings',
+      dataSource: 'Data Source',
+      local: 'Local',
+      localDesc: 'Collect data from this machine',
+      remote: 'Remote',
+      remoteDesc: 'Connect to a remote monitoring server',
+      serverUrl: 'Server URL',
+      username: 'Username',
+      password: 'Password',
+      testConnection: 'Test Connection',
+      testing: 'Testing...',
+      connected: 'Connected',
+      connectionFailed: 'Connection failed',
+      save: 'Save',
+      cancel: 'Cancel',
+    },
   },
   zh: {
     dashboard: {
@@ -384,6 +418,23 @@ export const i18n: Record<Locale, I18nSchema> = {
       start: '开始',
       pause: '暂停',
       killTooltip: (pid) => `终止进程 PID ${pid}`,
+    },
+    settings: {
+      title: '设置',
+      dataSource: '数据来源',
+      local: '本地',
+      localDesc: '采集本机数据',
+      remote: '远程',
+      remoteDesc: '连接到远程监控服务器',
+      serverUrl: '服务器地址',
+      username: '用户名',
+      password: '密码',
+      testConnection: '测试连接',
+      testing: '测试中...',
+      connected: '已连接',
+      connectionFailed: '连接失败',
+      save: '保存',
+      cancel: '取消',
     },
   },
 };

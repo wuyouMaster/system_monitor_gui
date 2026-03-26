@@ -19,6 +19,7 @@ import {
   StopCircle as KillIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
+import type { DataSource } from '../types/data-source';
 
 interface Process {
   pid: number;
@@ -30,6 +31,7 @@ interface Process {
 
 interface ProcessPanelProps {
   locale: Locale;
+  dataSource: DataSource;
   processes: Process[];
   processCount: number;
 }
@@ -212,7 +214,7 @@ const ProcessRow: React.FC<{
 );
 
 export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
-  ({ processes, processCount, locale }) => {
+  ({ processes, processCount, locale, dataSource }) => {
     const text = i18n[locale].process;
     const parentRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -221,9 +223,9 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
   const [searchError, setSearchError] = useState<string | null>(null);
 
     const handleKill = useCallback(async (pid: number) => {
-      const result = await window.systemInfo.killProcess(pid);
+      const result = await dataSource.killProcess(pid);
       if (result?.error) console.error(`Kill PID ${pid} failed:`, result.error);
-    }, []);
+    }, [dataSource]);
 
   const sortedProcesses = useMemo(
     () => [...processes].sort((a, b) => b.memoryUsage - a.memoryUsage),
@@ -242,7 +244,7 @@ export const ProcessPanel: React.FC<ProcessPanelProps> = React.memo(
     setSearchLoading(true);
     setSearchError(null);
     const timer = window.setTimeout(() => {
-      window.systemInfo.searchProcess(query).then((result) => {
+      dataSource.searchProcess(query).then((result) => {
         if (cancelled) return;
         if (result?.error) {
           console.warn('process search error:', result.error);

@@ -9,6 +9,7 @@ import {
   FormControl,
   MenuItem,
   Select,
+  IconButton,
 } from '@mui/material';
 import {
   Memory as MemoryIcon,
@@ -17,6 +18,7 @@ import {
   Storage as DiskIcon,
   ViewList as ProcessIcon,
   Timeline as TraceIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { MemoryPanel } from './MemoryPanel';
 import { CpuPanel } from './CpuPanel';
@@ -24,7 +26,10 @@ import { DiskPanel } from './DiskPanel';
 import { SocketPanel } from './SocketPanel';
 import { ProcessPanel } from './ProcessPanel';
 import { ProcessTracePanel } from './ProcessTracePanel';
+import { SettingsPanel } from './SettingsPanel';
 import { i18n, type Locale } from '../i18n';
+import { useDataSource } from '../hooks/useDataSource';
+import type { DataSource } from '../types/data-source';
 
 // ---------------------------------------------------------------------------
 // Independent state slices — each panel owns its own state so a push event
@@ -53,8 +58,12 @@ export const Dashboard: React.FC = () => {
   const [processes,     setProcesses]     = useState<any[]>(EMPTY_ARR);
   const [processCount,  setProcessCount]  = useState(0);
   const [traceEvents,   setTraceEvents]   = useState<number>(0);
-  const [ready,         setReady]         = useState(false);
+  const [dataReady,     setDataReady]     = useState(false);
+  const [settingsOpen,  setSettingsOpen]  = useState(false);
   const readyRef = useRef(false);
+
+  const { source, settings, connected, authError, ready: dsReady, switchSource, testConnection } = useDataSource();
+
   const avgCpuUsage =
     cpuUsage.length > 0
       ? cpuUsage.filter(Number.isFinite).reduce((a, b) => a + b, 0) / cpuUsage.length
@@ -101,6 +110,10 @@ export const Dashboard: React.FC = () => {
   ];
 
   useEffect(() => {
+    // Don't subscribe until the data source is ready (auth completed for remote)
+    if (!dsReady) return;
+
+    const currentSource: DataSource = source;
     const pendingRef: {
       fast?: { memory: any; cpu: any; cpuUsage: number[] };
       slow?: { disks: any[]; socketSummary: any; connections: any[] };
@@ -128,7 +141,7 @@ export const Dashboard: React.FC = () => {
             setCpuUsage(fast.cpuUsage);
             if (!readyRef.current) {
               readyRef.current = true;
-              setReady(true);
+              setDataReady(true);
             }
           }
           if (slow) {
@@ -147,22 +160,22 @@ export const Dashboard: React.FC = () => {
       });
     };
 
-    const unsubFast = window.systemInfo.onFastData((d) => {
+    const unsubFast = currentSource.onFastData((d) => {
       pendingRef.fast = d;
       scheduleFlush();
     });
 
-    const unsubSlow = window.systemInfo.onSlowData((d) => {
+    const unsubSlow = currentSource.onSlowData((d) => {
       pendingRef.slow = d;
       scheduleFlush();
     });
 
-    const unsubProc = window.systemInfo.onProcessData((d) => {
+    const unsubProc = currentSource.onProcessData((d) => {
       pendingRef.proc = d;
       scheduleFlush();
     });
 
-    const unsubTrace = window.systemInfo.onTraceData((d) => {
+    const unsubTrace = currentSource.onTraceData((d) => {
       pendingRef.trace = d;
       scheduleFlush();
     });
@@ -174,9 +187,9 @@ export const Dashboard: React.FC = () => {
       unsubTrace();
       if (rafIdRef.current) window.cancelAnimationFrame(rafIdRef.current);
     };
-  }, []);
+  }, [source, dsReady]);
 
-  if (!ready) {
+  if (!dsReady || !dataReady) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
         <Box textAlign="center">
@@ -185,7 +198,7 @@ export const Dashboard: React.FC = () => {
             variant="body2"
             sx={{ mt: 2, color: 'rgba(235,235,245,0.6)', fontWeight: 400 }}
           >
-            {text.dashboard.loading}
+            {authError || text.dashboard.loading}
           </Typography>
         </Box>
       </Box>
@@ -214,17 +227,51 @@ export const Dashboard: React.FC = () => {
       <Box sx={{ p: 3, maxWidth: 1600, mx: 'auto' }}>
         {/* Header */}
         <Box mb={4} pt={1} display="flex" flexDirection="column" alignItems="flex-start" gap={1.25}>
-          <FormControl size="small" sx={{ minWidth: 130 }}>
-            <Select
-              value={locale}
-              onChange={(event) => setLocale(event.target.value as Locale)}
-              displayEmpty
-              sx={{ fontSize: 13, height: 34 }}
+          <Box display="flex" alignItems="center" gap={1}>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <Select
+                value={locale}
+                onChange={(event) => setLocale(event.target.value as Locale)}
+                displayEmpty
+                sx={{ fontSize: 13, height: 34 }}
+              >
+                <MenuItem value="en">{text.dashboard.language}: English</MenuItem>
+                <MenuItem value="zh">{text.dashboard.language}: 中文</MenuItem>
+              </Select>
+            </FormControl>
+            <IconButton
+              onClick={() => setSettingsOpen(true)}
+              size="small"
+              sx={{
+                color: 'rgba(235,235,245,0.5)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 1.5,
+                width: 34,
+                height: 34,
+                '&:hover': {
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'rgba(235,235,245,0.8)',
+                },
+              }}
+              title={text.settings.title}
             >
-              <MenuItem value="en">{text.dashboard.language}: English</MenuItem>
-              <MenuItem value="zh">{text.dashboard.language}: 中文</MenuItem>
-            </Select>
-          </FormControl>
+              <SettingsIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+            {settings.type === 'remote' && (
+              <Chip
+                label={connected ? text.settings.connected : text.settings.connectionFailed}
+                size="small"
+                sx={{
+                  height: 22,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  background: connected ? 'rgba(52,199,89,0.15)' : 'rgba(255,59,48,0.15)',
+                  color: connected ? '#34C759' : '#FF3B30',
+                  border: `1px solid ${connected ? 'rgba(52,199,89,0.3)' : 'rgba(255,59,48,0.3)'}`,
+                }}
+              />
+            )}
+          </Box>
           <Box sx={{ pointerEvents: 'none' }}>
             <Typography variant="h4" sx={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: -0.5 }}>
               {text.dashboard.appTitle}
@@ -342,13 +389,13 @@ export const Dashboard: React.FC = () => {
                 <SocketPanel socketSummary={socketSummary} connections={connections} locale={locale} />
               </Box>
               <Box sx={{ display: activeTab === 3 ? 'block' : 'none' }}>
-                <DiskPanel disks={disks} locale={locale} />
+                <DiskPanel disks={disks} locale={locale} dataSource={source} />
               </Box>
               <Box sx={{ display: activeTab === 4 ? 'block' : 'none' }}>
-                <ProcessPanel processes={processes} processCount={processCount} locale={locale} />
+                <ProcessPanel processes={processes} processCount={processCount} locale={locale} dataSource={source} />
               </Box>
               <Box sx={{ display: activeTab === 5 ? 'block' : 'none' }}>
-                <ProcessTracePanel locale={locale} />
+                <ProcessTracePanel locale={locale} dataSource={source} />
               </Box>
             </Box>
           </Box>
@@ -361,6 +408,17 @@ export const Dashboard: React.FC = () => {
           </Typography>
         </Box>
       </Box>
+
+      {/* Settings Dialog */}
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        currentSettings={settings}
+        connected={connected}
+        onSave={switchSource}
+        onTest={testConnection}
+        locale={locale}
+      />
     </Box>
   );
 };

@@ -23,9 +23,11 @@ import {
   InsertDriveFile as FileIcon,
 } from '@mui/icons-material';
 import { i18n, type Locale } from '../i18n';
+import type { DataSource } from '../types/data-source';
 
 interface DiskPanelProps {
   locale: Locale;
+  dataSource: DataSource;
   disks: {
     device: string;
     mountPoint: string;
@@ -44,7 +46,7 @@ interface DirEntry {
   size: number;
 }
 
-export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks, locale }) => {
+export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks, locale, dataSource }) => {
   const text = i18n[locale].disk;
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [children, setChildren] = useState<Record<string, { loading: boolean; error?: string; entries: DirEntry[] }>>({});
@@ -87,7 +89,7 @@ export const DiskPanel: React.FC<DiskPanelProps> = React.memo(({ disks, locale }
         [path]: { loading: true, entries: [] },
       }));
       try {
-        const result = await window.systemInfo.listDir(path);
+        const result = await dataSource.listDir(path);
         const entries = result?.entries ?? [];
         const error = result?.error;
         setChildren(prev => ({
